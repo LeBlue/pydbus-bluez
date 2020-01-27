@@ -1,0 +1,195 @@
+
+from time import sleep
+from pydbus import SystemBus, Variant
+
+from .bzutils import get_managed_objects, BluezInterfaceObject
+from . import error as bz
+
+from gi.repository.GLib import Error as GLibError
+
+
+class Adapter(BluezInterfaceObject):
+
+    @bz.convertBluezError
+    def __init__(self, name):
+        try:
+            super().__init__('/org/bluez/{}'.format(name), name)
+
+        # try:
+        #     self._proxy = bz.callBluezFunction(self.bus.get, 'org.bluez', self._obj, iface='org.bluez.Adapter1')
+        except bz.BluezDoesNotExistError:
+            raise bz.BluezDoesNotExistError(
+                'Adapter not found \'{}\''.format(name)) from None
+
+        if not self._proxy.Powered:
+            self._proxy.Powered = True
+
+
+    @bz.convertBluezError
+    def scan(self, enable=True, args=None):
+        if enable:
+            if args:
+                # convert to Variants (for supported)
+                if 'UUIDs' in args and not isinstance(args['UUIDs'], Variant):
+                    args['UUIDs'] = Variant('as', args['UUIDs'])
+                if 'Transport' in args and not isinstance(args['Transport'], Variant):
+                    args['Transport'] = Variant('s', args['Transport'])
+
+                bz.callBluezFunction(self._proxy.SetDiscoveryFilter, args)
+            try:
+                bz.callBluezFunction(self._proxy.StartDiscovery)
+            except bz.BluezInProgressError:
+                pass
+        else:
+            try:
+                bz.callBluezFunction(self._proxy.StopDiscovery)
+            except bz.BluezFailedError:
+                pass
+
+        return self._proxy.Discovering
+
+
+    @bz.convertBluezError
+    def scanning(self):
+        return self._proxy.Discovering
+
+
+    @bz.convertBluezError
+    def devices(self):
+        return [ Device(obj=obj) for obj in get_managed_objects(self.bus, self.obj + '/dev') if len(obj.split('/')) == 5 ]
+
+
+    @bz.convertBluezError
+    def paired_devices(self):
+        devs = self.devices()
+        p_devs = []
+        for dev in devs:
+            try:
+                if dev.paired():
+                    p_devs.append(dev)
+            except GLibError as e:
+                self.logger.error(str(e))
+                raise
+
+
+        return p_devs
+
+
+    @bz.convertBluezError
+    def remove_device(self, dev_obj):
+        self._proxy.RemoveDevice(dev_obj)
+
+
+
+class Device(BluezInterfaceObject):
+
+    @bz.convertBluezError
+    def __init__(self, adapter=None, addr=None, obj=None):
+        super().__init__(obj, addr)
+        if obj and not addr:
+            #self.name = self.address()
+            self.name = self._proxy.Address
+
+
+    @bz.convertBluezError
+    def pair(self):
+        try:
+            return bz.callBluezFunction(self._proxy.Pair)
+
+        except bz.BluezAlreadyExistsError:
+            self.logger.warn('Already paired: %s', str(self))
+            return self.paired()
+
+        return False
+
+
+    @bz.convertBluezError
+    def paired(self):
+        return self._proxy.Paired
+
+
+    @bz.convertBluezError
+    def connected(self):
+        return self._getBluezPropOrNone('Connected', fail_ret=False)
+        #return self._proxy.Connected
+
+
+    @bz.convertBluezError
+    def connect(self):
+        self._proxy.Connect()
+
+        return self.connected()
+
+
+    @bz.convertBluezError
+    def disconnect(self):
+        try:
+            bz.callBluezFunction(self._proxy.Disconnect)
+        except bz.BluezInProgressError:
+            return not self.connected()
+        except bz.DBusUnknownObjectError:
+            pass
+
+        return False
+
+
+    @bz.convertBluezError
+    def remove(self):
+        if self.obj:
+            ad_name = self.obj.split('/')[3]
+            try:
+                ad = Adapter(ad_name)
+                ad.remove_device(self.obj)
+            except bz.BluezError:
+                pass
+
+
+
+    @bz.convertBluezError
+    def address(self):
+        #return self._proxy.Address
+        return self.name
+
+
+    @property
+    def rssi(self):
+        return self._getBluezPropOrNone('RSSI')
+
+
+    @property
+    def services_resolved(self):
+        return self._getBluezPropOrNone('ServicesResolved', fail_ret=False)
+
+
+    @bz.convertBluezError
+    def wait_services_resolved(self, wait_resolved_sec):
+        waitfor = 0
+
+        self.logger.debug('resolved: %s',self._proxy.ServicesResolved)
+        while not self.services_resolved and waitfor < wait_resolved_sec:
+            if not self._proxy.Connected:
+                raise bz.BluezNotConnectedError('Not connected')
+            #waitfor -= 1
+            waitfor += 1
+            sleep(1)
+        self.logger.info('Waited %s for resolving gatt DB uuids', waitfor)
+        return self.services_resolved
+
+
+    @property
+    def device_name(self):
+        return self._getBluezPropOrNone('Name')
+
+
+    @bz.convertBluezError
+    def trusted(self):
+        return self._proxy.Trusted
+
+
+    @bz.convertBluezError
+    def trust(self, on=True):
+        self._proxy.Trusted = on
+        return self.trusted()
+
+
+__all__ = ('Device', 'Adapter')
