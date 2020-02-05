@@ -46,9 +46,16 @@ class BluezInterfaceObject(object):
     @bzerror.convertBluezError
     def onPropertiesChanged(self, func, prop=None, **kwargs):
         if self.obj:
+            if self._proxy:
+                prop_proxy = self._proxy
+            else:
+                prop_proxy = self.bus.get('org.bluez', self.obj)
+            if not func:
+
+                prop_proxy.onPropertiesChanged = None
+                return
             self.logger.debug('Connecting to .PropertiesChanged on %s', self.obj)
-            prop_proxy = self.bus.get(
-                'org.bluez', self.obj)
+
 
             def changed_cb(*args):
                 # the callback will be called with *args, arg[0] is Interface, arg[1] is dict with all
@@ -58,7 +65,7 @@ class BluezInterfaceObject(object):
                     if not prop or prop in args[1]:
                         func(self, args[1], **kwargs)
 
-            prop_proxy.PropertiesChanged.connect(changed_cb)
+            prop_proxy.onPropertiesChanged = changed_cb
         else:
             raise bzerror.BluezDoesNotExistError(
                 'Object not set for {}'.format(str(self)))

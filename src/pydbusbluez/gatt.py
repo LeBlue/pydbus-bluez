@@ -292,7 +292,7 @@ class GattCharacteristic(BluezInterfaceObject):
         if self.obj:
             try:
                 self.onPropertiesChanged(None)
-                if self.notifying():
+                if self.notifying:
                     self._proxy.StopNotify()
             except bzerror.BluezError:
                 pass
