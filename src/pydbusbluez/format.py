@@ -107,7 +107,8 @@ class FormatPacked(FormatBase):
     def decode(cls, value):
         v = bytes(value)
         if len(v) < cls.len:
-            v += bytes([0] * (cls.len - len(v)))
+            v = bytes(value) + bytes([0] * (cls.len - len(v)))
+
 
         # acc = unpack(cls.endian + cls.pck_fmt, v)
         acc = cls.pck_fmt.unpack(v)
