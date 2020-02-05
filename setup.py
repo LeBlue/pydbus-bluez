@@ -2,15 +2,18 @@
 # -*- coding: utf-8 -*-
 
 from setuptools import setup, find_packages
+from os import path
+import re
 
+here = path.abspath(path.dirname(__file__))
 
 pkgname = 'pydbusbluez'
+src_dir = 'src'
 
 def find_version(*file_paths):
     with open(path.join(here, *file_paths), encoding='utf-8') as f:
         version_file = f.read()
-        print(version_file)
-    version_match = re.search(r"^([^'\"]*)",
+    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]",
                               version_file, re.M)
     if version_match:
         return version_match.group(1)
@@ -23,11 +26,14 @@ def long_description(*file_paths):
 
 setup(
    name=pkgname,
-   version=find_version(['src', pkgname, '__init__.py'])
+   version=find_version(src_dir, pkgname, '__init__.py'),
    description='Utils for testing and configuration of ble devices via bluez dbus API',
    author='Matthias Wauer',
    author_email='matthiaswauer@gmail.com',
-   packages=find_packages(exclude=['docs', 'tests*']),
+   packages=find_packages(where=src_dir),
+   package_dir={
+      '': src_dir,
+   },
    url='https://github.com/LeBlue/pydbus-bluez',
 
    install_requires=[
