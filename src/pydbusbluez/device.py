@@ -105,14 +105,12 @@ class Device(BluezInterfaceObject):
 
     @bz.convertBluezError
     def paired(self):
-        return self._proxy.Paired
+        return self._getBluezPropOrNone('Paired', fail_ret=False)
 
 
     @bz.convertBluezError
     def connected(self):
         return self._getBluezPropOrNone('Connected', fail_ret=False)
-        #return self._proxy.Connected
-
 
     @bz.convertBluezError
     def connect(self):
@@ -147,7 +145,6 @@ class Device(BluezInterfaceObject):
 
     @bz.convertBluezError
     def address(self):
-        #return self._proxy.Address
         return self.name
 
 
@@ -183,7 +180,7 @@ class Device(BluezInterfaceObject):
 
     @bz.convertBluezError
     def trusted(self):
-        return self._proxy.Trusted
+        return self._getBluezPropOrNone('Trusted', fail_ret=False)
 
 
     @bz.convertBluezError
