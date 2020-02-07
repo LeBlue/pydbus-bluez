@@ -203,13 +203,13 @@ class GattCharacteristic(BluezInterfaceObject):
     @bzerror.convertBluezError
     def read(self, options={}, raw=False, native=True):
 
-        if 'timeout' in options:
+        if options and 'timeout' in options:
             to = options['timeout']
             del options['timeout']
         else:
             to = None
 
-        if 'offset' in options and not isinstance(options['offset'], Variant):
+        if options and 'offset' in options and not isinstance(options['offset'], Variant):
             options['offset'] = Variant('q', options['offset'])
 
         if self._proxy:
