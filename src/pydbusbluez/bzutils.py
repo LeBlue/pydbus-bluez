@@ -51,8 +51,10 @@ class BluezInterfaceObject(object):
             else:
                 prop_proxy = self.bus.get('org.bluez', self.obj)
             if not func:
-
-                prop_proxy.onPropertiesChanged = None
+                try:
+                    prop_proxy.onPropertiesChanged = None
+                except AttributeError:
+                    pass
                 return
             self.logger.debug('Connecting to .PropertiesChanged on %s', self.obj)
 
