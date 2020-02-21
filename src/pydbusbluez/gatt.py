@@ -81,7 +81,7 @@ class Gatt(object):
             device_sub_objs.remove(service_obj)
             try:
                 ser_proxy = self.bus.get(
-                    'org.bluez', service_obj, 'org.bluez.GattService1')
+                    'org.bluez', service_obj)
 
             except bzerror.BluezDoesNotExistError:
                 continue
@@ -138,7 +138,7 @@ class Gatt(object):
                             if service_sub_obj.split('/')[-1].startswith('char'):
                                 try:
                                     uuid = self.bus.get(
-                                        'org.bluez', service_sub_obj, 'org.bluez.GattCharacteristic1').UUID
+                                        'org.bluez', service_sub_obj).UUID
                                 except bzerror.BluezDoesNotExistError:
                                     uuid = 'unknown'
 
@@ -157,7 +157,7 @@ class Gatt(object):
             for service_obj in service_objs:
                 try:
                     uuid = self.bus.get(
-                        'org.bluez', service_obj, 'org.bluez.GattService1').UUID
+                        'org.bluez', service_obj).UUID
                 except bzerror.BluezDoesNotExistError:
                     uuid = 'unknown'
 
