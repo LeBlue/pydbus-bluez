@@ -168,7 +168,7 @@ class BluezInterfaceObject(object):
         self._obj = obj
         if obj:
             self._proxy = self.bus.get(
-                'org.bluez', obj, self._def_iface_name())
+                'org.bluez', obj)
         else:
             try:
                 self.onPropertiesChanged(None)
