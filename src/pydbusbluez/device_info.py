@@ -148,23 +148,6 @@ def main():
             print('Interupted:', str(e))
 
 
-        # idx=1
-        # while True:
-        #     try:
-        #         print("Loop:", idx)
-        #         for dinfo in dev_info.chars:
-        #             if dinfo.obj:
-        #                 print(dinfo.name, ':', dinfo.read())
-
-        #         sleep(1)
-        #         idx += 1
-
-        #     except BluezError as e:
-        #         print(str(e))
-        #         break
-        #     except KeyboardInterrupt:
-        #         break
-
 
     if not args.keep:
         dev.disconnect()

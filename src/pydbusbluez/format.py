@@ -64,7 +64,10 @@ class FormatUint(FormatBase):
             #print(cls._name__, 'pass:', idx, 'acc=', acc)
 
         if cls.exponent:
-            return cls(float(acc) * pow(10, cls.exponent))
+            n = float(acc) * pow(10, cls.exponent)
+            if cls.exponent:
+                n = round(n, cls.exponent * -1)
+            return cls(n)
         return cls(acc)
 
 
@@ -114,7 +117,7 @@ class FormatPacked(FormatBase):
         acc = cls.pck_fmt.unpack(v)
         #print(acc)
         if cls.exponent:
-            return cls(float(acc[0]) * pow(10, cls.exponent))
+            return cls(round(float(acc[0]) * pow(10, cls.exponent), cls.exponent * -1))
         return cls(acc[0])
 
 
@@ -218,7 +221,7 @@ class FormatBitfield(FormatUint8):
     #native 'value' format is bytes
 
     def __str__(self):
-        return '{:08b}'.format(self.value)
+        return '0b{:08b}'.format(self.value)
 
 
 
@@ -231,11 +234,25 @@ class FormatTuple(FormatBase):
         try:
             if len(self.sub_cls) != len(value):
                 raise ValueError(
-                    'Expected {} number of values for format: {}'.format(len(self.sub_cls), self.__class__.__name__))
+                    'Expected {} number of values for format: {} ({}}'.format(len(self.sub_cls), self.__class__.__name__, self._sub_str()))
         except TypeError:
             raise TypeError(
-                'Expected list with {} number of values for format: {}'.format(len(self.sub_cls), self.__class__.__name__)) from None
+                'Expected list with {} number of values for format: {} ({})'.format(len(self.sub_cls), self.__class__.__name__, self._sub_str())) from None
         self.value = value
+
+    def _sub_str(self):
+        scn = None
+        try:
+            scn = self.sub_cls_names
+        except AttributeError:
+            pass
+
+        if scn and len(scn) == len(self):
+            d = {}
+            for idx, n in enumerate(scn):
+                d[n] = self.sub_cls[idx]
+            return str(d)
+        return '({})'.format(','.join([ sub_c.__name__ for sub_c in self.sub_cls]))
 
 # del not suported, wonder if wee need it
 #    def __delitem__(self, key):
@@ -284,7 +301,7 @@ class FormatTuple(FormatBase):
         return enc_vals
 
     def __str__(self):
-        return '(' + ' '.join([ str(v) for v in self.value ]) + ')'
+        return '(' + ','.join([ str(v) for v in self.value ]) + ')'
 
 
 __all__ = (

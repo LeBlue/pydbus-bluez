@@ -13,7 +13,3 @@ class FormatBatteryLevelState(FormatTuple):
     len = 2
     sub_cls = [FormatUint8, FormatBatteryPowerState]
 
-
-class FormatDeviceState(FormatTuple):
-    len = 2
-    sub_cls = [FormatUint8, FormatBitField]

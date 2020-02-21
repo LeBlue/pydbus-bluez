@@ -38,14 +38,10 @@ class FormatTemperatureCelsius(fmt.FormatSint16):
 
 
 class FormatBatteryPowerState(fmt.FormatBitfield):
-    pass
+   pass
 
 
 class FormatBatteryLevelState(fmt.FormatTuple):
-    len = 2
-    sub_cls = [fmt.FormatUint8, FormatBatteryPowerState]
+   len = 2
+   sub_cls = [fmt.FormatUint8, FormatBatteryPowerState]
 
-
-class FormatDeviceState(fmt.FormatTuple):
-    len = 2
-    sub_cls = [fmt.FormatUint8, fmt.FormatBitfield]

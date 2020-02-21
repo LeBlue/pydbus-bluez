@@ -89,4 +89,4 @@ class BluezInterfaceObject(object):
         return fail_ret
 
     def __str__(self):
-        return '{}(obj={},name={})'.format(self.__class__.__name__, self.obj, self.name)
+        return '{}(obj=\'{}\',name=\'{}\')'.format(self.__class__.__name__.split('.')[-1], self.obj, self.name)

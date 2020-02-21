@@ -98,23 +98,20 @@ class Gatt(object):
                     service_sub_objs = [
                         obj for obj in device_sub_objs if obj.startswith(service_obj + '/')]
 
-
-
                     # cross reference chars with uuids
                     for service_sub_obj in service_sub_objs.copy():
                         if service_sub_obj.split('/')[-1].startswith('char'):
                             char_obj = service_sub_obj
                             device_sub_objs.remove(char_obj)
-                            #print(char_obj)
+
                             try:
                                 char_proxy = self.bus.get(
                                     'org.bluez', char_obj, 'org.bluez.GattCharacteristic1')
                             except bzerror.BluezDoesNotExistError as e:
-                                print(str(e))
+                                self.logger.warn('%s: %s %s: %s', self.__class__.__name__, char_obj, str(e))
                                 continue
 
                             char_uuid = char_proxy.UUID
-
 
                             for service_char_gatt in service.chars:
                                 if char_uuid == service_char_gatt.uuid:
@@ -186,7 +183,12 @@ class GattService(BluezInterfaceObject):
         super().__init__(None, name)
 
     def __str__(self):
-        return 'GattService {} \'{}\' {}'.format(self.uuid, self.name, self.obj)
+        return '{}(obj=\'{}\',name=\'{}\',uuid=\'{}\')'.format(
+                self.__class__.__name__.split('.')[-1],
+                self.obj,
+                self.name,
+                self.uuid
+            )
 
 
 class GattCharacteristic(BluezInterfaceObject):
@@ -306,8 +308,15 @@ class GattCharacteristic(BluezInterfaceObject):
                 pass
         return False
 
-    def __repr__(self):
-        return 'GattCharacteristic {} {} {}'.format(self.uuid, self.name, self.obj)
+    def __str__(self):
+        return '{}(obj=\'{}\',name=\'{}\',uuid=\'{}\',form=\'{}\')'.format(
+                self.__class__.__name__.split('.')[-1],
+                self.obj,
+                self.name,
+                self.uuid,
+                self.form.__name__.split('.')[-1]
+            )
+
 
 
 class GattDescriptor(BluezInterfaceObject):

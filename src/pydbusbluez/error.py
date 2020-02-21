@@ -88,10 +88,7 @@ AuthenticationTimeout
 ConnectionAttemptFailed (from pairs)
 DoesNotExist
 
-Zugriff auf nicht vorhandenes objekt -> Key error (bus.get())
-
 '''
-_debug = False
 
 def convertBluezError(func):
     def wrapper(*args, **kwargs):
@@ -102,7 +99,7 @@ def convertBluezError(func):
 def callBluezFunction(func, *args, **kwargs):
     try:
         logger.debug(
-            'Calling: %s(%s,%s)', func.__name__, str(args), str(kwargs))
+            'Calling: %s %s(%s,%s)', func, func.__name__, str(args), str(kwargs))
         return func(*args, **kwargs)
     except (BluezError, DBusError):
         raise
@@ -140,7 +137,7 @@ def getDBusError(err):
             raise BluezDoesNotExistError(err.args[0])
 
 #GLib.Error: g-io-error-quark: Timeout was reached
-    logger.debug(type(err), str(err))
+    logger.debug('%s, %s', type(err), str(err))
 
     if isinstance(err, GLib.Error) and err.args and len(err.args) > 0 and err.args[0] == 'Timeout was reached':
         raise DBusTimeoutError(err.message)
