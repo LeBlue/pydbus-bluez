@@ -53,7 +53,7 @@ class Gatt(object):
                     if 'form' in char_desc:
                         new_characteristic.form = char_desc['form']
                     else:
-                        self.logger.warn('No \'form\' set for %s, using \'FormatRaw\'', new_characteristic.name)
+                        self.logger.warning('No \'form\' set for %s, using \'FormatRaw\'', new_characteristic.name)
                         new_characteristic.form = FormatRaw
                 self.logger.debug(str(new_service.__dict__))
         self.logger.debug(str(self.__dict__))
@@ -106,9 +106,9 @@ class Gatt(object):
 
                             try:
                                 char_proxy = self.bus.get(
-                                    'org.bluez', char_obj, 'org.bluez.GattCharacteristic1')
+                                    'org.bluez', char_obj)
                             except bzerror.BluezDoesNotExistError as e:
-                                self.logger.warn('%s: %s %s: %s', self.__class__.__name__, char_obj, str(e))
+                                self.logger.warning('%s: %s %s: %s', self.__class__.__name__, char_obj, str(e))
                                 continue
 
                             char_uuid = char_proxy.UUID
@@ -129,7 +129,7 @@ class Gatt(object):
                         # local decription was not found on remote device
                         for gatt_char in service.chars:
                             if not gatt_char.obj:
-                                self.logger.warn('%s: Not found on device: %s.%s',
+                                self.logger.warning('%s: Not found on device: %s.%s',
                                     self.__class__.__name__, service.name,  gatt_char.name)
 
                         # remaining obj are not matched locally
@@ -142,7 +142,7 @@ class Gatt(object):
                                 except bzerror.BluezDoesNotExistError:
                                     uuid = 'unknown'
 
-                                self.logger.warn('%s: Not found local: %s.%s (%s)',
+                                self.logger.warning('%s: Not found local: %s.%s (%s)',
                                     self.__class__.__name__, service.name, uuid, service_sub_obj)
 
                     # found match for service_obj -> gatt desciption uuid
@@ -151,7 +151,7 @@ class Gatt(object):
         if warn_unmatched:
             for service in self.services:
                 if not service.obj:
-                    self.logger.warn('%s: Not found on device: %s',
+                    self.logger.warning('%s: Not found on device: %s',
                             self.__class__.__name__, service.name)
 
             for service_obj in service_objs:
@@ -161,7 +161,7 @@ class Gatt(object):
                 except bzerror.BluezDoesNotExistError:
                     uuid = 'unknown'
 
-                self.logger.warn('%s: Not found local: %ss (%s)',
+                self.logger.warning('%s: Not found local: %ss (%s)',
                     self.__class__.__name__, uuid, service_obj)
         # a litte waring , if not found
 

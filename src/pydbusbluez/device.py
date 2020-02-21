@@ -146,7 +146,7 @@ class Device(BluezInterfaceObject):
             return bz.callBluezFunction(self._proxy.Pair)
 
         except bz.BluezAlreadyExistsError:
-            self.logger.warn('Already paired: %s', str(self))
+            self.logger.warning('Already paired: %s', str(self))
             return self.paired()
 
         return False
