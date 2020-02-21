@@ -166,6 +166,26 @@ class Gatt(object):
         # a litte waring , if not found
 
 
+    def clear(self):
+        for s in self.services:
+            for c in s.chars:
+                try:
+                    c._proxy.onPropertiesChanged = None
+                except AttributeError:
+                    pass
+                c.obj = None
+                c.service = None
+                c._proxy = None
+            try:
+                s._proxy.onPropertiesChanged = None
+            except AttributeError:
+                pass
+
+            s.chars = None
+            s.obj = None
+            s._proxy = None
+        self.services = None
+
     def help_keys(self):
         print('Valid attributes for the Gatt object are:', file=sys.stderr)
         for s in self.services:
@@ -175,6 +195,9 @@ class Gatt(object):
 
 
 class GattService(BluezInterfaceObject):
+
+
+    iface = 'org.bluez.{}1'.format(__name__)
 
     def __init__(self, name, uuid):
         # self.name = name
@@ -190,8 +213,10 @@ class GattService(BluezInterfaceObject):
                 self.uuid
             )
 
-
 class GattCharacteristic(BluezInterfaceObject):
+
+
+    iface = 'org.bluez.{}1'.format(__name__)
 
     def __init__(self, name, uuid, service):
         self.uuid = uuid.lower()
@@ -230,6 +255,13 @@ class GattCharacteristic(BluezInterfaceObject):
 
 
         return None
+
+    def read_async(self, options={}, raw=False, native=True):
+        try:
+            options['timeout'] = 0
+            self.read(options=options, raw=True)
+        except:
+            pass
 
     @property
     def value(self):
@@ -274,21 +306,28 @@ class GattCharacteristic(BluezInterfaceObject):
 
             self._proxy.WriteValue(v_enc, options)
 
+
     @bzerror.convertBluezError
-    def notifyOn(self, func, enable=True, **kwargs):
+    def onValueChanged(self, func, *args, **kwargs):
         # to remove
         if self.obj:
-            def val_changed_dec(gatt_char_self, changed_values, **kwargs):
+            def valueChangedCallback(gatt_char_self, changed_values, *cbargs, **cbkwargs):
                 if 'Value' in changed_values:
                     gatt_value_obj = gatt_char_self.form.decode(
                         changed_values['Value'])
-                    func(gatt_char_self, gatt_value_obj, **kwargs)
+                    func(gatt_char_self, gatt_value_obj, *cbargs, **cbkwargs)
 
-            self.onPropertiesChanged(val_changed_dec, 'Value', **kwargs)
-            if enable:
-                self._proxy.StartNotify()
+            self.onPropertiesChanged(valueChangedCallback, *args, prop='Value', **kwargs)
         else:
             raise bzerror.BluezDoesNotExistError('Object not initialized: ' + str(self))
+
+    def notifyOn(self):
+        if self.obj:
+            if not self.notifying:
+                self._proxy.StartNotify()
+        else:
+            raise BluezDoesNotExistError('Failed to enable notify: {}'.format(str(self)))
+
 
     def notifyOff(self):
         if self.obj:
@@ -317,9 +356,10 @@ class GattCharacteristic(BluezInterfaceObject):
                 self.form.__name__.split('.')[-1]
             )
 
-
-
 class GattDescriptor(BluezInterfaceObject):
+
+    iface = 'org.bluez.{}1'.format(__name__)
+
     def __init__(self, name, uuid):
         self.name = name
         self.uuid = uuid.lower()
