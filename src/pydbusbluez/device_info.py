@@ -121,7 +121,7 @@ def main():
 
     print('Service UUIDs resolved')
 
-    dev_info = gatt.device_information
+    dev_info = gatt.device_information # pylint: disable=no-member
 
     for dinfo in dev_info.chars:
         if dinfo.obj:

@@ -39,14 +39,13 @@ class FormatBase(object):
         return self.value
 
     def __str__(self):
-        #return '{}: {}'.format(self.__class__.__name__, str(self.value))
         return str(self.value)
 
 # alias
 class FormatRaw(FormatBase):
     pass
 
-# only for non-power two uints
+# base only for non-power two uints
 class FormatUint(FormatBase):
 
     exponent = 0

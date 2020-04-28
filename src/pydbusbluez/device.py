@@ -135,14 +135,18 @@ class Adapter(BluezInterfaceObject):
         try:
             super().__init__('/org/bluez/{}'.format(name), name)
 
-        # try:
-        #     self._proxy = bz.callBluezFunction(self.bus.get, 'org.bluez', self._obj, iface='org.bluez.Adapter1')
-        except bz.BluezDoesNotExistError:
+        except (bz.BluezDoesNotExistError, bz.DBusUnknownObjectError):
             raise bz.BluezDoesNotExistError(
                 'Adapter not found \'{}\''.format(name)) from None
 
-        if not self._proxy.Powered:
-            self._proxy.Powered = True
+        try:
+            if not bz.getBluezPropOrRaise(self._proxy, 'Powered'):
+                self._proxy.Powered = True
+
+        except (bz.BluezDoesNotExistError, bz.DBusUnknownObjectError):
+            raise bz.BluezDoesNotExistError(
+                'Adapter not found \'{}\''.format(name)) from None
+
 
 
     @bz.convertBluezError
@@ -331,10 +335,15 @@ class Device(BluezInterfaceObject):
             if addr:
                 self.name = addr
             else:
-                try:
-                    self.name = self._proxy.Address
-                except DBusError as e:
-                    raise BluezDoesNotExistError(str(e)) from None
+                self.name = self._getBluezPropOrNone('Address')
+                if not self.name:
+                    try:
+                        self.name = obj.split('/')[4][4:].replace('_', ':')
+                    except Exception:
+                        pass
+
+        if not adapter and obj:
+            adapter = Adapter(obj.split('/')[3])
         self.adapter = adapter
 
 

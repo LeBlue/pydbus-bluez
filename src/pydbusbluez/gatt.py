@@ -27,45 +27,71 @@ def _convert_to_long_uuid(uuid):
         return '{}-0000-1000-8000-00805f9b34fb'.format(uuid)
     return uuid
 
+
+def _is_obj_device(obj):
+    return obj.split('/')[-1].startswith('dev')
+
+def _is_obj_service(obj):
+    return obj.split('/')[-1].startswith('service')
+
+def _is_obj_characteristic(obj):
+    return obj.split('/')[-1].startswith('char')
+
+def _is_obj_descriptor(obj):
+    return obj.split('/')[-1].startswith('desc')
+
+def _sub_objects(obj, object_list):
+    sub_path = obj + '/'
+    return [ sub for sub in object_list if sub.startswith(sub_path)]
+
+def _is_sub_object_of(obj, sub):
+    sub_path = obj + '/'
+    return sub.startswith(sub_path)
+
+
+
 class Gatt(object):
 
     bus = SystemBus()
     logger = logging.getLogger(__name__ + '.Gatt')
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
+
+    def add_service(self, name, uuid):
+        key_service = _make_id(name)
+        new_service = GattService(name, _convert_to_long_uuid(uuid))
+        setattr(self, key_service, new_service)
+
+        self.services.append(new_service)
+        return new_service
 
     # gatt object can ONLY be created After device is connected
     def __init__(self, dev, gatt_desc, warn_unmatched=True):
         self.dev = dev
         self.services = []
 
-
         for serv_desc in gatt_desc:
-            key_service = _make_id(serv_desc['name'])
-            new_service = GattService(serv_desc['name'], _convert_to_long_uuid(serv_desc['uuid']))
-            setattr(self, key_service, new_service)
-
-            self.services.append(new_service)
+            new_service = self.add_service(serv_desc['name'], serv_desc['uuid'])
             if 'chars' in serv_desc:
                 for char_desc in serv_desc['chars']:
-                    key_char = _make_id(char_desc['name'])
+                    char_form = char_desc['form'] if 'form' in char_desc else FormatRaw
+                    new_characteristic = new_service.add_characteristic(char_desc['name'], char_desc['uuid'], char_form)
 
-                    new_characteristic = GattCharacteristic(
-                        char_desc['name'], _convert_to_long_uuid(char_desc['uuid']), new_service)
-                    setattr(new_service, key_char, new_characteristic)
-                    new_service.chars.append(new_characteristic)
-                    if 'form' in char_desc:
-                        new_characteristic.form = char_desc['form']
-                    else:
-                        self.logger.warning('No \'form\' set for %s, using \'FormatRaw\'', new_characteristic.name)
-                        new_characteristic.form = FormatRaw
+                    if 'descriptors' in char_desc:
+                        for desc_desc in char_desc['descriptors']:
+                            desc_form = desc_desc['form'] if 'form' in desc_desc else FormatRaw
+                            _ = new_characteristic.add_descriptor(desc_desc['name'], desc_desc['uuid'], desc_form)
+
+                        self.logger.debug(str(new_characteristic.__dict__))
+
                 self.logger.debug(str(new_service.__dict__))
+
         self.logger.debug(str(self.__dict__))
 
         self.resolve(15, warn_unmatched=warn_unmatched)
 
     # gatt object can ONLY be created After device is connected and services are resolved
     @bzerror.convertBluezError
-    def resolve(self, resolve_timeout=0, warn_unmatched=True):
+    def resolve(self, resolve_timeout=0, warn_unmatched=True, resolve_unknown=True):
 
         if not self.dev.services_resolved:
             self.logger.debug('Services not resolved, waiting for it for max: {}s'.format(resolve_timeout))
@@ -77,56 +103,36 @@ class Gatt(object):
 
         # get all objects starting with '/org/bluez/adapter/device/'
         device_sub_objs = get_managed_objects(self.bus, self.dev.obj + '/')
-        service_objs = [obj for obj in device_sub_objs if obj.split('/')[-1].startswith('service')]
-
-        for service_obj in service_objs.copy():
+        service_objs_unmatched = [obj for obj in device_sub_objs if _is_obj_service(obj)]
+        for service_obj in service_objs_unmatched.copy():
             # only get services
             device_sub_objs.remove(service_obj)
-            try:
-                ser_proxy = self.bus.get(
-                    'org.bluez', service_obj)
+            service_proxy = self.bus.construct(GattService.introspection,
+                ORG_BLUEZ, service_obj)
 
-            except bzerror.BluezDoesNotExistError:
+            service_uuid = bzerror.getBluezPropOrNone(service_proxy, 'UUID')
+            if not service_uuid:
                 continue
 
             # match service uuids
             for service in self.services:
-                if ser_proxy.UUID == service.uuid:
-                    self.logger.debug(service)
+                if service_uuid == service.uuid:
+                    service_objs_unmatched.remove(service_obj)
+                    service._obj = service_obj
+                    service._proxy = service_proxy
+                    self.logger.debug("Found: %s", str(service))
 
-                    service_objs.remove(service_obj)
-                    service.obj = service_obj
+
+        # either warn or set generic names for unmatched
+
                     # subobjects of this service
+                    service_sub_objs = _sub_objects(service_obj, device_sub_objs)
 
-                    service_sub_objs = [
-                        obj for obj in device_sub_objs if obj.startswith(service_obj + '/')]
-
-                    # cross reference chars with uuids
-                    for service_sub_obj in service_sub_objs.copy():
-                        if service_sub_obj.split('/')[-1].startswith('char'):
-                            char_obj = service_sub_obj
-                            device_sub_objs.remove(char_obj)
-
-                            try:
-                                char_proxy = self.bus.get(
-                                    'org.bluez', char_obj)
-                            except bzerror.BluezDoesNotExistError as e:
-                                self.logger.warning('%s: %s %s: %s', self.__class__.__name__, char_obj, str(e))
-                                continue
-
-                            char_uuid = char_proxy.UUID
-
-                            for service_char_gatt in service.chars:
-                                if char_uuid == service_char_gatt.uuid:
-                                    service_char_gatt.obj = char_obj
-                                    self.logger.debug(service_char_gatt)
-
-                                    # remove from list, to find out, which we could not match to bluez objects
-                                    service_sub_objs.remove(char_obj)
-
-                                    # found matching characteristic to characteristing obj
-                                    break
-
+                    # cross reference char objects with uuids
+                    matched_objs = service._resolve_characteristics(service_sub_objs)
+                    for matched_obj in matched_objs:
+                        device_sub_objs.remove(matched_obj)
+                        service_sub_objs.remove(matched_obj)
 
                     if warn_unmatched:
                         # local decription was not found on remote device
@@ -138,12 +144,12 @@ class Gatt(object):
                         # remaining obj are not matched locally
                         for service_sub_obj in service_sub_objs:
                             # ignore descriptors for now
-                            if service_sub_obj.split('/')[-1].startswith('char'):
-                                try:
-                                    uuid = self.bus.get(
-                                        'org.bluez', service_sub_obj).UUID
-                                except bzerror.BluezDoesNotExistError:
-                                    uuid = 'unknown'
+                            if _is_obj_characteristic(service_sub_obj):
+
+                                proxy = self.bus.construct(GattCharacteristic.introspection,
+                                        ORG_BLUEZ, service_sub_obj)
+
+                                uuid = bzerror.getBluezPropOrNone(proxy, 'UUID')
 
                                 self.logger.warning('%s: Not found local: %s.%s (%s)',
                                     self.__class__.__name__, service.name, uuid, service_sub_obj)
@@ -157,12 +163,11 @@ class Gatt(object):
                     self.logger.warning('%s: Not found on device: %s',
                             self.__class__.__name__, service.name)
 
-            for service_obj in service_objs:
-                try:
-                    uuid = self.bus.get(
-                        'org.bluez', service_obj).UUID
-                except bzerror.BluezDoesNotExistError:
-                    uuid = 'unknown'
+            for service_obj in service_objs_unmatched:
+
+                proxy = self.bus.construct(GattService.introspection,
+                    ORG_BLUEZ, service_obj)
+                uuid = bzerror.getBluezPropOrNone(proxy, 'UUID')
 
                 self.logger.warning('%s: Not found local: %ss (%s)',
                     self.__class__.__name__, uuid, service_obj)
@@ -254,7 +259,59 @@ class GattService(BluezInterfaceObject):
                 self.uuid
             )
 
-class GattCharacteristic(BluezInterfaceObject):
+    @property
+    def device(self):
+        dev_path = bzerror.getBluezPropOrNone(self._proxy, 'Device')
+        if dev_path:
+            try:
+                return Device(obj=dev_path)
+            except bzerror.BluezError:
+                pass
+
+        return None
+
+    def add_characteristic(self, name, uuid, form=None):
+        key_char = _make_id(name)
+        new_characteristic = GattCharacteristic(name, _convert_to_long_uuid(uuid), self)
+
+        setattr(self, key_char, new_characteristic)
+        self.chars.append(new_characteristic)
+
+        if form:
+            new_characteristic.form = form
+        else:
+            self.logger.warning('No \'form\' set for %s, using \'FormatRaw\'', new_characteristic.name)
+            new_characteristic.form = FormatRaw
+
+        return new_characteristic
+
+    def _resolve_characteristics(self, objects, warn_unmatched=False, resolve_unknown=True):
+        matched_chars = []
+        for obj in objects:
+            if not _is_obj_characteristic(obj):
+                continue
+
+            proxy = SystemBus().construct(GattCharacteristic.introspection, ORG_BLUEZ, obj)
+            uuid = bzerror.getBluezPropOrNone(proxy, 'UUID')
+
+            if not uuid:
+                # TODO: remember that this failed to match?
+                continue
+
+            for char in self.chars:
+                if char.uuid == uuid:
+                    # char.obj = obj
+                    char._proxy = proxy
+                    char._obj = obj
+                    matched_chars.append(obj)
+                    char_sub_objs = _sub_objects(obj, objects)
+                    matched_desc = char._resolve_descriptors(char_sub_objs)
+                    matched_chars.extend(matched_desc)
+                    break
+
+
+        return matched_chars
+
 
 class GattCharacteristic(BluezInterfaceObject):
 
@@ -330,6 +387,7 @@ class GattCharacteristic(BluezInterfaceObject):
         self._proxy = None
         self.service = service
         self.name = name
+        self.descriptors = []
         super().__init__(None, name)
 
     @bzerror.convertBluezError
@@ -497,6 +555,37 @@ class GattCharacteristic(BluezInterfaceObject):
                 self.uuid,
                 self.form.__name__.split('.')[-1]
             )
+
+    def add_descriptor(self, name, uuid, form=FormatRaw):
+        new_descriptor = GattDescriptor(name, _convert_to_long_uuid(uuid), self)
+        new_descriptor.form = form
+
+        key_desc = _make_id(name)
+
+        setattr(self, key_desc, new_descriptor)
+        self.descriptors.append(new_descriptor)
+        return new_descriptor
+
+    def _resolve_descriptors(self, objects, warn_unmatched=False):
+        matched_descriptors = []
+        for obj in objects:
+            proxy = SystemBus().construct(GattDescriptor.introspection, ORG_BLUEZ, obj)
+            uuid = bzerror.getBluezPropOrNone(proxy, 'UUID')
+
+            if not uuid:
+                # TODO: remember that this failed to match?
+                continue
+
+            for desc in self.descriptors:
+                if desc.uuid == uuid:
+                    # desc.obj = obj
+                    desc._proxy = proxy
+                    desc._obj = obj
+                    matched_descriptors.append(obj)
+
+        return matched_descriptors
+
+
 
 class GattDescriptor(BluezInterfaceObject):
 
