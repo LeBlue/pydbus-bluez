@@ -2,15 +2,133 @@
 from time import sleep
 from pydbus import SystemBus, Variant
 
-from .bzutils import get_managed_objects, BluezInterfaceObject, BluezObjectManager
+from .bzutils import BluezInterfaceObject
+from .object_manager import get_managed_objects, BluezObjectManager
 from . import error as bz
+from .pydbus_backfill import ProxyMethodAsync
 
 from gi.repository.GLib import Error as GLibError
+from xml.etree import ElementTree as ET
+
 
 
 class Adapter(BluezInterfaceObject):
 
     iface = 'org.bluez.{}1'.format(__name__)
+    intro_xml = '''<?xml version="1.0" ?>
+        <!DOCTYPE node
+        PUBLIC '-//freedesktop//DTD D-BUS Object Introspection 1.0//EN'
+        'http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd'>
+        <node>
+        <interface name="org.freedesktop.DBus.Introspectable">
+            <method name="Introspect">
+            <arg direction="out" name="xml" type="s"/>
+            </method>
+        </interface>
+        <interface name="org.bluez.Adapter1">
+            <method name="StartDiscovery"/>
+            <method name="SetDiscoveryFilter">
+            <arg direction="in" name="properties" type="a{sv}"/>
+            </method>
+            <method name="StopDiscovery"/>
+            <method name="RemoveDevice">
+            <arg direction="in" name="device" type="o"/>
+            </method>
+            <method name="GetDiscoveryFilters">
+            <arg direction="out" name="filters" type="as"/>
+            </method>
+            <property access="read" name="Address" type="s"/>
+            <property access="read" name="AddressType" type="s"/>
+            <property access="read" name="Name" type="s"/>
+            <property access="readwrite" name="Alias" type="s"/>
+            <property access="read" name="Class" type="u"/>
+            <property access="readwrite" name="Powered" type="b"/>
+            <property access="readwrite" name="Discoverable" type="b"/>
+            <property access="readwrite" name="DiscoverableTimeout" type="u"/>
+            <property access="readwrite" name="Pairable" type="b"/>
+            <property access="readwrite" name="PairableTimeout" type="u"/>
+            <property access="read" name="Discovering" type="b"/>
+            <property access="read" name="UUIDs" type="as"/>
+            <property access="read" name="Modalias" type="s"/>
+        </interface>
+        <interface name="org.freedesktop.DBus.Properties">
+            <method name="Get">
+            <arg direction="in" name="interface" type="s"/>
+            <arg direction="in" name="name" type="s"/>
+            <arg direction="out" name="value" type="v"/>
+            </method>
+            <method name="Set">
+            <arg direction="in" name="interface" type="s"/>
+            <arg direction="in" name="name" type="s"/>
+            <arg direction="in" name="value" type="v"/>
+            </method>
+            <method name="GetAll">
+            <arg direction="in" name="interface" type="s"/>
+            <arg direction="out" name="properties" type="a{sv}"/>
+            </method>
+            <signal name="PropertiesChanged">
+            <arg name="interface" type="s"/>
+            <arg name="changed_properties" type="a{sv}"/>
+            <arg name="invalidated_properties" type="as"/>
+            </signal>
+        </interface>
+        <interface name="org.bluez.GattManager1">
+            <method name="RegisterApplication">
+            <arg direction="in" name="application" type="o"/>
+            <arg direction="in" name="options" type="a{sv}"/>
+            </method>
+            <method name="UnregisterApplication">
+            <arg direction="in" name="application" type="o"/>
+            </method>
+        </interface>
+        <interface name="org.bluez.LEAdvertisingManager1">
+            <method name="RegisterAdvertisement">
+            <arg direction="in" name="advertisement" type="o"/>
+            <arg direction="in" name="options" type="a{sv}"/>
+            </method>
+            <method name="UnregisterAdvertisement">
+            <arg direction="in" name="service" type="o"/>
+            </method>
+            <property access="read" name="ActiveInstances" type="y"/>
+            <property access="read" name="SupportedInstances" type="y"/>
+            <property access="read" name="SupportedIncludes" type="as"/>
+            <property access="read" name="SupportedSecondaryChannels" type="as"/>
+        </interface>
+        <interface name="org.bluez.Media1">
+            <method name="RegisterEndpoint">
+            <arg direction="in" name="endpoint" type="o"/>
+            <arg direction="in" name="properties" type="a{sv}"/>
+            </method>
+            <method name="UnregisterEndpoint">
+            <arg direction="in" name="endpoint" type="o"/>
+            </method>
+            <method name="RegisterPlayer">
+            <arg direction="in" name="player" type="o"/>
+            <arg direction="in" name="properties" type="a{sv}"/>
+            </method>
+            <method name="UnregisterPlayer">
+            <arg direction="in" name="player" type="o"/>
+            </method>
+            <method name="RegisterApplication">
+            <arg direction="in" name="application" type="o"/>
+            <arg direction="in" name="options" type="a{sv}"/>
+            </method>
+            <method name="UnregisterApplication">
+            <arg direction="in" name="application" type="o"/>
+            </method>
+        </interface>
+        <interface name="org.bluez.NetworkServer1">
+            <method name="Register">
+            <arg direction="in" name="uuid" type="s"/>
+            <arg direction="in" name="bridge" type="s"/>
+            </method>
+            <method name="Unregister">
+            <arg direction="in" name="uuid" type="s"/>
+            </method>
+        </interface>
+    </node>
+    '''
+    introspection = ET.fromstring(intro_xml)
 
     @bz.convertBluezError
     def __init__(self, name):
@@ -102,29 +220,95 @@ class Adapter(BluezInterfaceObject):
     @bz.convertBluezError
     def paired_devices(self):
         devs = self.devices()
-        p_devs = []
+        paired_devs = []
         for dev in devs:
             try:
-                if dev.paired():
-                    p_devs.append(dev)
-            except GLibError as e:
-                self.logger.error(str(e))
-                raise
+                if dev.paired:
+                    paired_devs.append(dev)
+            except Exception:
+                pass
 
-
-        return p_devs
+        return paired_devs
 
 
     @bz.convertBluezError
     def remove_device(self, dev_obj):
+        '''
+            remove device: disconnect, remove pairing keys, delete gatt db cache (in bluez)
+        '''
         self._proxy.RemoveDevice(dev_obj)
 
 
 
 class Device(BluezInterfaceObject):
 
-
     iface = 'org.bluez.{}1'.format(__name__)
+    intro_xml = '''<?xml version="1.0" ?>
+        <!DOCTYPE node
+        PUBLIC '-//freedesktop//DTD D-BUS Object Introspection 1.0//EN'
+        'http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd'>
+        <node>
+        <interface name="org.freedesktop.DBus.Introspectable">
+            <method name="Introspect">
+            <arg direction="out" name="xml" type="s"/>
+            </method>
+        </interface>
+        <interface name="org.bluez.Device1">
+            <method name="Disconnect"/>
+            <method name="Connect"/>
+            <method name="ConnectProfile">
+            <arg direction="in" name="UUID" type="s"/>
+            </method>
+            <method name="DisconnectProfile">
+            <arg direction="in" name="UUID" type="s"/>
+            </method>
+            <method name="Pair"/>
+            <method name="CancelPairing"/>
+            <property access="read" name="Address" type="s"/>
+            <property access="read" name="AddressType" type="s"/>
+            <property access="read" name="Name" type="s"/>
+            <property access="readwrite" name="Alias" type="s"/>
+            <property access="read" name="Class" type="u"/>
+            <property access="read" name="Appearance" type="q"/>
+            <property access="read" name="Icon" type="s"/>
+            <property access="read" name="Paired" type="b"/>
+            <property access="readwrite" name="Trusted" type="b"/>
+            <property access="readwrite" name="Blocked" type="b"/>
+            <property access="read" name="LegacyPairing" type="b"/>
+            <property access="read" name="RSSI" type="n"/>
+            <property access="read" name="Connected" type="b"/>
+            <property access="read" name="UUIDs" type="as"/>
+            <property access="read" name="Modalias" type="s"/>
+            <property access="read" name="Adapter" type="o"/>
+            <property access="read" name="ManufacturerData" type="a{qv}"/>
+            <property access="read" name="ServiceData" type="a{sv}"/>
+            <property access="read" name="TxPower" type="n"/>
+            <property access="read" name="ServicesResolved" type="b"/>
+        </interface>
+        <interface name="org.freedesktop.DBus.Properties">
+            <method name="Get">
+            <arg direction="in" name="interface" type="s"/>
+            <arg direction="in" name="name" type="s"/>
+            <arg direction="out" name="value" type="v"/>
+            </method>
+            <method name="Set">
+            <arg direction="in" name="interface" type="s"/>
+            <arg direction="in" name="name" type="s"/>
+            <arg direction="in" name="value" type="v"/>
+            </method>
+            <method name="GetAll">
+            <arg direction="in" name="interface" type="s"/>
+            <arg direction="out" name="properties" type="a{sv}"/>
+            </method>
+            <signal name="PropertiesChanged">
+            <arg name="interface" type="s"/>
+            <arg name="changed_properties" type="a{sv}"/>
+            <arg name="invalidated_properties" type="as"/>
+            </signal>
+        </interface>
+        </node>'''
+    introspection = ET.fromstring(intro_xml)
+
 
     @bz.convertBluezError
     def __init__(self, adapter=None, addr=None, obj=None):

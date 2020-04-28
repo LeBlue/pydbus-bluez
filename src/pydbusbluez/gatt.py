@@ -2,9 +2,12 @@
 import sys
 from pydbus import SystemBus, Variant
 from array import array
+from xml.etree import ElementTree as ET
 
 from .format import *
-from .bzutils import get_managed_objects, BluezInterfaceObject
+from .bzutils import BluezInterfaceObject, ORG_BLUEZ
+from .object_manager import get_managed_objects
+from .device import Device
 
 from . import error as bzerror
 import logging
@@ -196,8 +199,46 @@ class Gatt(object):
 
 class GattService(BluezInterfaceObject):
 
-
     iface = 'org.bluez.{}1'.format(__name__)
+    intro_xml = '''<?xml version="1.0" ?>
+        <!DOCTYPE node
+        PUBLIC '-//freedesktop//DTD D-BUS Object Introspection 1.0//EN'
+        'http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd'>
+        <node>
+        <interface name="org.freedesktop.DBus.Introspectable">
+            <method name="Introspect">
+            <arg direction="out" name="xml" type="s"/>
+            </method>
+        </interface>
+        <interface name="org.bluez.GattService1">
+            <property access="read" name="UUID" type="s"/>
+            <property access="read" name="Device" type="o"/>
+            <property access="read" name="Primary" type="b"/>
+            <property access="read" name="Includes" type="ao"/>
+        </interface>
+        <interface name="org.freedesktop.DBus.Properties">
+            <method name="Get">
+            <arg direction="in" name="interface" type="s"/>
+            <arg direction="in" name="name" type="s"/>
+            <arg direction="out" name="value" type="v"/>
+            </method>
+            <method name="Set">
+            <arg direction="in" name="interface" type="s"/>
+            <arg direction="in" name="name" type="s"/>
+            <arg direction="in" name="value" type="v"/>
+            </method>
+            <method name="GetAll">
+            <arg direction="in" name="interface" type="s"/>
+            <arg direction="out" name="properties" type="a{sv}"/>
+            </method>
+            <signal name="PropertiesChanged">
+            <arg name="interface" type="s"/>
+            <arg name="changed_properties" type="a{sv}"/>
+            <arg name="invalidated_properties" type="as"/>
+            </signal>
+        </interface>
+        </node>'''
+    introspection = ET.fromstring(intro_xml)
 
     def __init__(self, name, uuid):
         # self.name = name
@@ -215,8 +256,72 @@ class GattService(BluezInterfaceObject):
 
 class GattCharacteristic(BluezInterfaceObject):
 
+class GattCharacteristic(BluezInterfaceObject):
 
     iface = 'org.bluez.{}1'.format(__name__)
+    intro_xml = '''<?xml version="1.0" ?>
+        <!DOCTYPE node
+        PUBLIC '-//freedesktop//DTD D-BUS Object Introspection 1.0//EN'
+        'http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd'>
+        <node>
+        <interface name="org.freedesktop.DBus.Introspectable">
+            <method name="Introspect">
+            <arg direction="out" name="xml" type="s"/>
+            </method>
+        </interface>
+        <interface name="org.bluez.GattCharacteristic1">
+            <method name="ReadValue">
+            <arg direction="in" name="options" type="a{sv}"/>
+            <arg direction="out" name="value" type="ay"/>
+            </method>
+            <method name="WriteValue">
+            <arg direction="in" name="value" type="ay"/>
+            <arg direction="in" name="options" type="a{sv}"/>
+            </method>
+            <method name="AcquireWrite">
+            <arg direction="in" name="options" type="a{sv}"/>
+            <arg direction="out" name="fd" type="h"/>
+            <arg direction="out" name="mtu" type="q"/>
+            </method>
+            <method name="AcquireNotify">
+            <arg direction="in" name="options" type="a{sv}"/>
+            <arg direction="out" name="fd" type="h"/>
+            <arg direction="out" name="mtu" type="q"/>
+            </method>
+            <method name="StartNotify"/>
+            <method name="StopNotify"/>
+            <property access="read" name="UUID" type="s"/>
+            <property access="read" name="Service" type="o"/>
+            <property access="read" name="Value" type="ay"/>
+            <property access="read" name="Notifying" type="b"/>
+            <property access="read" name="Flags" type="as"/>
+            <property access="read" name="WriteAcquired" type="b"/>
+            <property access="read" name="NotifyAcquired" type="b"/>
+        </interface>
+        <interface name="org.freedesktop.DBus.Properties">
+            <method name="Get">
+            <arg direction="in" name="interface" type="s"/>
+            <arg direction="in" name="name" type="s"/>
+            <arg direction="out" name="value" type="v"/>
+            </method>
+            <method name="Set">
+            <arg direction="in" name="interface" type="s"/>
+            <arg direction="in" name="name" type="s"/>
+            <arg direction="in" name="value" type="v"/>
+            </method>
+            <method name="GetAll">
+            <arg direction="in" name="interface" type="s"/>
+            <arg direction="out" name="properties" type="a{sv}"/>
+            </method>
+            <signal name="PropertiesChanged">
+            <arg name="interface" type="s"/>
+            <arg name="changed_properties" type="a{sv}"/>
+            <arg name="invalidated_properties" type="as"/>
+            </signal>
+        </interface>
+        </node>
+    '''
+    introspection = ET.fromstring(intro_xml)
 
     def __init__(self, name, uuid, service):
         self.uuid = uuid.lower()
@@ -359,10 +464,83 @@ class GattCharacteristic(BluezInterfaceObject):
 class GattDescriptor(BluezInterfaceObject):
 
     iface = 'org.bluez.{}1'.format(__name__)
+    intro_xml = '''<?xml version="1.0" ?>
+        <!DOCTYPE node
+        PUBLIC '-//freedesktop//DTD D-BUS Object Introspection 1.0//EN'
+        'http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd'>
+        <node>
+        <interface name="org.freedesktop.DBus.Introspectable">
+            <method name="Introspect">
+            <arg direction="out" name="xml" type="s"/>
+            </method>
+        </interface>
+        <interface name="org.bluez.GattDescriptor1">
+            <method name="ReadValue">
+            <arg direction="in" name="options" type="a{sv}"/>
+            <arg direction="out" name="value" type="ay"/>
+            </method>
+            <method name="WriteValue">
+            <arg direction="in" name="value" type="ay"/>
+            <arg direction="in" name="options" type="a{sv}"/>
+            </method>
+            <property access="read" name="UUID" type="s"/>
+            <property access="read" name="Characteristic" type="o"/>
+            <property access="read" name="Value" type="ay"/>
+        </interface>
+        <interface name="org.freedesktop.DBus.Properties">
+            <method name="Get">
+            <arg direction="in" name="interface" type="s"/>
+            <arg direction="in" name="name" type="s"/>
+            <arg direction="out" name="value" type="v"/>
+            </method>
+            <method name="Set">
+            <arg direction="in" name="interface" type="s"/>
+            <arg direction="in" name="name" type="s"/>
+            <arg direction="in" name="value" type="v"/>
+            </method>
+            <method name="GetAll">
+            <arg direction="in" name="interface" type="s"/>
+            <arg direction="out" name="properties" type="a{sv}"/>
+            </method>
+            <signal name="PropertiesChanged">
+            <arg name="interface" type="s"/>
+            <arg name="changed_properties" type="a{sv}"/>
+            <arg name="invalidated_properties" type="as"/>
+            </signal>
+        </interface>
+        </node>'''
 
-    def __init__(self, name, uuid):
-        self.name = name
+    introspection = ET.fromstring(intro_xml)
+
+    def __init__(self, name, uuid, char):
+        # self.name = name
         self.uuid = uuid.lower()
+        self.form = FormatRaw
         self._obj = None
         self._proxy = None
-        super().__init__(None)
+        self.char = char
+
+        super().__init__(None, name)
+
+# def __init__(self, name, uuid, service):
+#         self.uuid = uuid.lower()
+#         self.form = FormatRaw
+#         self._obj = None
+#         self._proxy = None
+#         self.service = service
+#         self.name = name
+#         super().__init__(None, name)
+
+    def __str__(self):
+        return '{}(obj=\'{}\',name=\'{}\',uuid=\'{}\',form=\'{}\')'.format(
+                self.__class__.__name__.split('.')[-1],
+                self.obj,
+                self.name,
+                self.uuid,
+                self.form.__name__.split('.')[-1]
+            )
+
+    read = GattCharacteristic.read
+    read_async = GattCharacteristic.read_async
+    write = GattCharacteristic.write
+    value = GattCharacteristic.value
