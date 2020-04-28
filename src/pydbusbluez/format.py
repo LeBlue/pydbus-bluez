@@ -25,7 +25,7 @@ class FormatBase(object):
         self.value = value
         try:
             _ =  self.encode()
-        except BaseException:
+        except Exception:
             # keep exception raised by 'encode', but add this one
             raise TypeError('{}, wrong type: {}, expected: {}'.format(
                 self.__class__.__name__, type(value), self.native_types))
@@ -61,7 +61,6 @@ class FormatUint(FormatBase):
             if idx == cls.len:
                 break
             acc += int(v) * pow(2, 8*idx)
-            #print(cls._name__, 'pass:', idx, 'acc=', acc)
 
         if cls.exponent:
             n = float(acc) * pow(10, cls.exponent)
@@ -82,8 +81,6 @@ class FormatUint(FormatBase):
             v = int(v/256)
         return bytes(b)
 
-    # def __str__(self):
-    #     return str(self.value)
 
 class FormatUint24(FormatUint):
     len = 3
@@ -206,7 +203,7 @@ class FormatTuple(FormatBase):
 
     sub_cls = []
     native_types = (tuple, list)
-    # here we have a list
+    # here we have a list as value
     def __init__(self, value):
         try:
             if len(self.sub_cls) != len(value):

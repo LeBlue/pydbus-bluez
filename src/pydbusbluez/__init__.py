@@ -1,16 +1,19 @@
 __version__ = "0.4.4"
 
-from .gatt import Gatt, GattService, GattCharacteristic
+from .gatt import Gatt, GattService, GattCharacteristic, GattDescriptor
 from .device import Device, Adapter
+from .object_manager import BluezObjectManager as Bluez
 from .error import *
 from .format import *
 
 __all__ = (
+    'Bluez',
     'Adapter',
     'Device',
     'Gatt',
     'GattService',
     'GattCharacteristic',
+    'GattDescriptor',
     'DBusError',
     'DBusUnknownObjectError',
     'DBusTimeoutError',

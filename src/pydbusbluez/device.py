@@ -146,16 +146,22 @@ class Adapter(BluezInterfaceObject):
 
 
     @bz.convertBluezError
-    def scan(self, enable=True, args=None):
+    def scan(self, enable=True, filters=None):
+        '''
+            enable:  enable/disable scanning
+            filters: dict with scan filters, see bluez 'SetDiscoveryFilter' API:
+                        'UUIDs': list with UUID strings
+                        'Transport': string 'le', 'bredr' or 'auto'
+        '''
         if enable:
-            if args:
+            if filters and isinstance(filters, dict):
                 # convert to Variants (for supported)
-                if 'UUIDs' in args and not isinstance(args['UUIDs'], Variant):
-                    args['UUIDs'] = Variant('as', args['UUIDs'])
-                if 'Transport' in args and not isinstance(args['Transport'], Variant):
-                    args['Transport'] = Variant('s', args['Transport'])
+                if 'UUIDs' in filters and not isinstance(filters['UUIDs'], Variant):
+                    filters['UUIDs'] = Variant('as', filters['UUIDs'])
+                if 'Transport' in filters and not isinstance(filters['Transport'], Variant):
+                    filters['Transport'] = Variant('s', filters['Transport'])
 
-                bz.callBluezFunction(self._proxy.SetDiscoveryFilter, args)
+                bz.callBluezFunction(self._proxy.SetDiscoveryFilter, filters)
             try:
                 bz.callBluezFunction(self._proxy.StartDiscovery)
             except bz.BluezInProgressError:
@@ -166,27 +172,33 @@ class Adapter(BluezInterfaceObject):
             except bz.BluezFailedError:
                 pass
 
-        return self._proxy.Discovering
+        return bz.getBluezPropOrNone(self._proxy, 'Discovering', fail_ret=False)
 
 
-    @bz.convertBluezError
+    @property
     def scanning(self):
-        return self._proxy.Discovering
+        return bz.getBluezPropOrNone(self._proxy, 'Discovering', fail_ret=False)
 
 
     @bz.convertBluezError
     def devices(self):
+        '''
+            returns list with all scanned/connected/paired devices
+        '''
         return [ Device(adapter=self, obj=obj) for obj in get_managed_objects(self.bus, self.obj + '/dev') if len(obj.split('/')) == 5 ]
 
 
     def onDeviceAdded(self, func, *args, **kwargs):
+        '''
+            Registers callback for new device added/discovered
+        '''
         om = BluezObjectManager.get()
         if func:
             def onDeviceAddedCallback(self_ref, added_obj, added_if, *cbargs, **cbkwargs):
                 if Device.iface in added_if:
                     addr = None
-                    if 'Address' in added_if[iface]:
-                        addr = added_if[iface]['Address']
+                    if 'Address' in added_if[Device.iface]:
+                        addr = added_if[Device.iface]['Address']
                     d = Device(self, addr=addr, obj=added_obj)
                     if 'filter_interfaces' in cbkwargs:
                         del cbkwargs['filter_interfaces']
@@ -200,11 +212,13 @@ class Adapter(BluezInterfaceObject):
             om.onObjectAdded(None, None)
 
     def onDeviceRemoved(self, func, *args, **kwargs):
+        '''
+            Registers callback for device removed (either removed explicitly or scanning cache timeout)
+        '''
         om = BluezObjectManager.get()
         if func:
             def onDeviceAddedCallback(self_ref, removed_obj, removed_if, *cbargs, **cbkwargs):
                 if Device.iface in removed_if:
-                    addr = None
                     if 'filter_interfaces' in cbkwargs:
                         del cbkwargs['filter_interfaces']
 
@@ -331,30 +345,44 @@ class Device(BluezInterfaceObject):
 
         except bz.BluezAlreadyExistsError:
             self.logger.warning('Already paired: %s', str(self))
-            return self.paired()
+            return self.paired
 
         return False
 
 
-    @bz.convertBluezError
+    @property
     def paired(self):
         return self._getBluezPropOrNone('Paired', fail_ret=False)
 
-
-    @bz.convertBluezError
+    @property
     def connected(self):
         return self._getBluezPropOrNone('Connected', fail_ret=False)
 
     @bz.convertBluezError
-    def connect(self):
-        self._proxy.Connect()
+    def connect_async(self, done_cb, err_cb, data, timeout=30):
+        if done_cb:
+            def _done_cb(obj, res, user_data):
+                done_cb(self, res, user_data)
+        else:
+            _done_cb = None
 
-        return self.connected()
+        if err_cb:
+            def _err_cb(obj, res, user_data):
+                try:
+                    bz.getDBusError(res)
+                except Exception as e:
+                    res = e
+                err_cb(self, res, user_data)
+        else:
+            _err_cb = None
+
+        self._proxy.ConnectAsync(_done_cb, _err_cb, data, timeout=timeout)
+
 
     @bz.convertBluezError
-    def connect_async(self):
+    def connect(self):
         try:
-            self._proxy.Connect(timeout=3)
+            self._proxy.Connect(timeout=10)
         except Exception as e:
             self.logger.error(str(e))
             pass
@@ -365,7 +393,7 @@ class Device(BluezInterfaceObject):
         try:
             bz.callBluezFunction(self._proxy.Disconnect)
         except bz.BluezInProgressError:
-            return not self.connected()
+            return not self.connected
         except bz.DBusUnknownObjectError:
             pass
 
@@ -384,7 +412,11 @@ class Device(BluezInterfaceObject):
 
 
 
-    @bz.convertBluezError
+    # @bz.convertBluezError
+    # def address(self):
+    #     return self.name
+
+    @property
     def address(self):
         return self.name
 
@@ -418,8 +450,7 @@ class Device(BluezInterfaceObject):
     def device_name(self):
         return self._getBluezPropOrNone('Name')
 
-
-    @bz.convertBluezError
+    @property
     def trusted(self):
         return self._getBluezPropOrNone('Trusted', fail_ret=False)
 
@@ -427,7 +458,7 @@ class Device(BluezInterfaceObject):
     @bz.convertBluezError
     def trust(self, on=True):
         self._proxy.Trusted = on
-        return self.trusted()
+        return self.trusted
 
 
 __all__ = ('Device', 'Adapter')

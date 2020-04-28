@@ -73,6 +73,8 @@ class BluezNotConnectedError(BluezError):
 class BluezNotPermittedError(BluezError):
     pass
 
+class BluezDecodeError(BluezError):
+    pass
 
 # Todo
 '''
@@ -101,8 +103,8 @@ def callBluezFunction(func, *args, **kwargs):
         logger.debug(
             'Calling: %s %s(%s,%s)', func, func.__name__, str(args), str(kwargs))
         return func(*args, **kwargs)
-    except (BluezError, DBusError):
-        raise
+    except (BluezError, DBusError) as e:
+        raise e from None
     except Exception as e:
         getDBusError(e)
 
@@ -116,11 +118,23 @@ def getBluezPropOrNone(proxy, prop, fail_ret=None):
             raise
         except Exception as e:
             getDBusError(e)
-    #if ont exists, return just None/fail_ret
+    # if not exists, return just None/fail_ret
     except (BluezDoesNotExistError, DBusUnknownObjectError):
         pass
 
     return fail_ret
+
+def getBluezPropOrRaise(proxy, prop):
+    # first, convert error to own classes
+    try:
+        attr = getattr(proxy, prop, None)
+    except (BluezError, DBusError):
+        raise
+    except Exception as e:
+        getDBusError(e)
+    if attr == None:
+        raise BluezDoesNotExistError("property not found: " + prop)
+
 
 def getDBusError(err):
     logger.debug('ErrorDebug: %s', str(err))

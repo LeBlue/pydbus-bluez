@@ -346,7 +346,6 @@ class GattCharacteristic(BluezInterfaceObject):
 
         if self._proxy:
             try:
-                #v = self._proxy.ReadValue(options, timeout=to)
                 v = bzerror.callBluezFunction(self._proxy.ReadValue, options, timeout=to)
             except bzerror.DBusTimeoutError:
                 return None
@@ -355,25 +354,63 @@ class GattCharacteristic(BluezInterfaceObject):
             if raw:
                 return v
             else:
-                v_dec = self.form.decode(v)
+                try:
+                    v_dec = self.form.decode(v)
+                except Exception as e:
+                    raise bzerror.BluezDecodeError('{}: {}, got: {}'.format(self, str(e), str(v)))
                 return v_dec
 
 
         return None
 
-    def read_async(self, options={}, raw=False, native=True):
-        try:
-            options['timeout'] = 0
-            self.read(options=options, raw=True)
-        except:
-            pass
+    @bzerror.convertBluezError
+    def read_async(self, success_cb, error_cb, user_data, options={}, raw=False, native=True):
+
+        if self._proxy:
+            if error_cb:
+                def _error_cb(proxy, err, data):
+                    try:
+                        bzerror.getDBusError(err)
+                    except Exception as e:
+                        error_cb(self, e, data)
+            else:
+                _error_cb = None
+
+            if success_cb:
+                def _success_cb(proxy, result, data):
+                    # result conaines tuple with one element of bytes list
+                    if len(result):
+                        value = result[0]
+                        try:
+                            if not raw:
+                                v_dec = self.form.decode(value)
+                        except bzerror.BluezError as e:
+                            err = bzerror.BluezDecodeError('{}: {}, got: {}'.format(self, str(e), str(value)))
+                            error_cb(self, err, data)
+                            return
+                        success_cb(self, v_dec, data)
+                    else:
+                        error_cb(self, bzerror.BluezFailedError("No value was returned"), data)
+            else:
+                _success_cb = None
+
+            # try:
+            self._proxy.ReadValueAsync(_success_cb, _error_cb, user_data, options)
+            # except bzerror.BluezError as e:
+            #     # error_cb(self, e, user_data)
+            #     raise
+
+        else:
+            raise bzerror.BluezDoesNotExistError("Not found: " + self.name)
 
     @property
     def value(self):
         val = self._getBluezPropOrNone('Value')
         if val != None:
-           return self.form.decode(val)
-
+            try:
+                return self.form.decode(val)
+            except Exception:
+                pass
         return None
 
     @bzerror.convertBluezError
@@ -431,7 +468,7 @@ class GattCharacteristic(BluezInterfaceObject):
             if not self.notifying:
                 self._proxy.StartNotify()
         else:
-            raise BluezDoesNotExistError('Failed to enable notify: {}'.format(str(self)))
+            raise bzerror.BluezDoesNotExistError('Failed to enable notify: {}'.format(str(self)))
 
 
     def notifyOff(self):
