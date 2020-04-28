@@ -176,29 +176,6 @@ class FormatFloat64(FormatPacked):
     pck_fmt = Struct(_endian + 'd')
 
 
-# class FormatSint16(FormatBase):
-# # ones or twos complement or? this number plus sign
-#     len = 2
-
-#     native_types = int
-
-#     @classmethod
-#     def decode(cls, value):
-#         sign = 1 if (int(value[1] / 128)) == 0 else -1
-#         return cls(sign * (int(value[0]) + (int(value[1] % 128) * 256)))
-
-#     def encode(self):
-
-#         if self.value < 0:
-#             sign = 128
-#             v = self.value * -1
-#         else:
-#             sign = 0
-#             v = self.value
-
-#         return bytes([v % 256, int(v / 256) + sign])
-
-
 class FormatUtf8s(FormatBase):
 
     #native 'value' format is unicode string

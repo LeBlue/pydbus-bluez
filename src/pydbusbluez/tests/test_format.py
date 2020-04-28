@@ -1,4 +1,4 @@
-from prautils.format import *
+from pydbusbluez.format import *
 from array import array
 
 def test_uints():
@@ -131,51 +131,3 @@ if __name__ == "__main__":
 
 
     test_uints()
-
-
-
-    # print('FormatBitField:')
-    # n = FormatBitField(7)
-
-    # print('obj:     ', n.__repr__())
-    # print('obj.val: ', str(n.value))
-    # print('str(obj):', str(n))
-
-    # n_enc = n.encode()
-    # print('enc str: ', str(n_enc))
-
-    # n_dec = FormatBitField.decode(array('B', [0xf]))
-    # print('dec str: ', str(n_dec))
-
-    # print('')
-
-    # print('FormatASCII:')
-    # n = FormatASCII('123456')
-
-    # print('obj:     ', n.__repr__())
-    # print('obj.val: ', str(n.value))
-    # print('str(obj):', str(n))
-
-    # n_enc = n.encode()
-    # print('enc str: ', str(n_enc))
-
-    # n_dec = FormatASCII.decode(array('B', [0x31, 0x32, 0x33,0x34, 0x35, 0x36]))
-    # print('dec str: ', str(n_dec))
-
-    # print('')
-
-    # print('FormatUtf8s:')
-    # n = FormatUtf8s('123456')
-
-    # print('obj:     ', n.__repr__())
-    # print('obj.val: ', str(n.value))
-    # print('str(obj):', str(n))
-
-    # n_enc = n.encode()
-    # print('enc str: ', str(n_enc))
-
-    # n_dec = FormatUtf8s.decode(
-    #     array('B', [0x31, 0x32, 0x33, 0x34, 0x35, 0x36]))
-    # print('dec str: ', str(n_dec))
-
-    # print('')
