@@ -1,5 +1,5 @@
 from struct import Struct
-
+from types import new_class
 # class init => python type to obj, value = python type
 # obj encode: obj to bytes/array
 # classmethod decode: bytes array (array('B', [0, 2, 255, ..])) to python type
@@ -7,8 +7,17 @@ from struct import Struct
 # self.value is bytes on Base class
 
 
-class FormatBase(object):
+class MetaBluezFormat(type):
+    def __str__(self):
+        return '{}'.format(self.__name__)
 
+class MetaBluezFormatInt(type):
+    def __str__(self):
+        return '{}(len={},exponent={})'.format(self.__name__, self.len, self.exponent)
+
+class FormatBase(object, metaclass=MetaBluezFormat):
+
+    # __metaclass__ = MetaFormatInt
     # 0 means variable length
     len = 0
 
@@ -40,6 +49,11 @@ class FormatBase(object):
 
     def __str__(self):
         return str(self.value)
+
+    def __eq__(self, other):
+        if isinstance(other, FormatBase):
+            return self.value == other.value
+        return self.value == other
 
 # alias
 class FormatRaw(FormatBase):
@@ -80,7 +94,6 @@ class FormatUint(FormatBase):
             v = int(v/256)
         return bytes(b)
 
-
 class FormatUint24(FormatUint):
     len = 3
 
@@ -111,7 +124,6 @@ class FormatPacked(FormatBase):
 
         # acc = unpack(cls.endian + cls.pck_fmt, v)
         acc = cls.pck_fmt.unpack(v)
-        #print(acc)
         if cls.exponent:
             return cls(round(float(acc[0]) * pow(10, cls.exponent), cls.exponent * -1))
         return cls(acc[0])
@@ -125,10 +137,11 @@ class FormatPacked(FormatBase):
         #print(v)
         return self.pck_fmt.pack(v)
 
-    # def __str__(self):
-    #     return str(self.value)
+    def __int__(self):
+        return int(self.value)
 
-
+    def __float__(self):
+        return float(self.value)
 
 class FormatUint8(FormatPacked):
     pck_fmt = Struct(_endian + 'B')
@@ -191,10 +204,15 @@ class FormatUtf8s(FormatBase):
 
 class FormatBitfield(FormatUint8):
     len = 1
-    #native 'value' format is bytes
 
     def __str__(self):
         return '0b{:08b}'.format(self.value)
+
+class FormatBitfield16(FormatUint16):
+    len = 2
+
+    def __str__(self):
+        return '0b{:016b}'.format(self.value)
 
 
 
@@ -202,7 +220,7 @@ class FormatTuple(FormatBase):
 
     sub_cls = []
     native_types = (tuple, list)
-    # here we have a list as value
+    # here we have a list/tuple as value
     def __init__(self, value):
         try:
             if len(self.sub_cls) != len(value):
@@ -240,13 +258,6 @@ class FormatTuple(FormatBase):
     def __setitem__(self, key, sub_value):
         self.value[key] = sub_value
 
-    # @property
-    # def value(self):
-    #     return self.decode()
-
-    # @value.setter
-    # def value(self, value):
-    #     self._value = value
 
 
     @classmethod

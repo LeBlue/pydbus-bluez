@@ -1,21 +1,10 @@
 
 from pydbus import SystemBus
-from pydbus.proxy import ProxyMixin, CompositeInterface, Interface
-from pydbus.auto_names import auto_bus_name, auto_object_path
 from xml.etree import ElementTree as ET
 
 from . import error as bzerror
+from .bzutils import ORG_BLUEZ, BluezInterfaceObject
 import logging
-
-
-def get_managed_objects(sys_bus, obj_filter='/org/bluez/'):
-
-    _proxy = sys_bus.get(
-        'org.bluez', '/')
-
-    return [obj for obj in _proxy.GetManagedObjects() if obj.startswith(obj_filter) ]
-
-
 
 
 class BluezObjectManager(object):
@@ -24,10 +13,35 @@ class BluezObjectManager(object):
     logger.setLevel(logging.INFO)
     manager = None
 
+    intro_xml = '''<?xml version="1.0" ?>
+        <!DOCTYPE node
+        PUBLIC '-//freedesktop//DTD D-BUS Object Introspection 1.0//EN'
+        'http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd'>
+        <node>
+        <interface name="org.freedesktop.DBus.Introspectable">
+            <method name="Introspect">
+            <arg direction="out" name="xml" type="s"/>
+            </method>
+        </interface>
+        <interface name="org.freedesktop.DBus.ObjectManager">
+            <method name="GetManagedObjects">
+            <arg direction="out" name="objects" type="a{oa{sa{sv}}}"/>
+            </method>
+            <signal name="InterfacesAdded">
+            <arg name="object" type="o"/>
+            <arg name="interfaces" type="a{sa{sv}}"/>
+            </signal>
+            <signal name="InterfacesRemoved">
+            <arg name="object" type="o"/>
+            <arg name="interfaces" type="as"/>
+            </signal>
+        </interface>
+        </node>
+    '''
+    introspection = ET.fromstring(intro_xml)
 
     def __init__(self):
-        self._proxy = BluezObjectManager.bus.get(
-            'org.bluez', '/')
+        self._proxy = BluezObjectManager.bus.construct(self.introspection, ORG_BLUEZ, '/')
         self.obj = '/'
         self.interfaces_added_cbs = {}
         self.interfaces_removed_cbs = {}
@@ -40,9 +54,54 @@ class BluezObjectManager(object):
 
         return cls.manager
 
+    @classmethod
+    def objects(cls):
+        try:
+            objs = cls.get()._proxy.GetManagedObjects()
+        except Exception:
+            objs = []
+        return objs
 
-    # def onAdapterAdded(self, func, obj, *args, **kwargs):
-    #     self.onObjectAdded(func, obj, args)
+
+    @classmethod
+    def get_childs(cls, parent='/org/bluez', only_direct=False):
+
+        if isinstance(parent, BluezInterfaceObject):
+            if not parent.obj:
+                raise TypeError("parent's 'obj' property is not set")
+            filter = parent.obj + '/'
+        else:
+            filter = parent + '/'
+
+        objs = cls.objects()
+
+
+        if only_direct:
+            pathlen = len(filter.split('/'))
+            return [ obj for obj in objs if obj.startswith(filter) and pathlen == len(obj.split('/')) ]
+
+        return [ obj for obj in objs if obj.startswith(filter) ]
+
+    def childs(self, parent, only_direct=False):
+        if isinstance(parent, BluezInterfaceObject):
+            if not parent.obj:
+                raise TypeError("parent's 'obj' property is not set")
+            filter = parent.obj + '/'
+        else:
+            filter = parent + '/'
+
+        objs = self.__class__.objects()
+
+
+        if only_direct:
+            pathlen = len(filter.split('/'))
+            print('filter:', filter)
+            print('pathlen:', pathlen)
+            # print(objs)
+            return [ obj for obj in objs if obj.startswith(filter) and pathlen == len(obj.split('/')) ]
+
+
+        return [ obj for obj in objs if obj.startswith(filter) ]
 
 
     def onAdapterAdded(self, func, name, *args, **kwargs):
@@ -61,6 +120,7 @@ class BluezObjectManager(object):
             self.logger.debug('add onObjectAddedCallback: func: %s(%s,%s,%s)', func, parent_obj, args, kwargs)
 
             def onObjectAddedCallback(added_obj_path, added_interfaces, *cbargs, **cbkwargs):
+                print("Called:")
                 if filter_interface and filter_interface not in added_interfaces:
                     return
 
@@ -71,7 +131,7 @@ class BluezObjectManager(object):
                 return func(parent_obj, added_obj_path, added_interfaces, *args, **kwargs)
 
             self.interfaces_added_cbs[filter] = onObjectAddedCallback
-            self.logger.debug('added interface specific %s cb %s', str(filter), str(onObjectAddedCallback))
+            self.logger.debug('added interface (%s) specific callback: %s', str(filter), str(onObjectAddedCallback))
 
             if add_cb:
                 self._proxy.onInterfacesAdded = self._interfaces_added

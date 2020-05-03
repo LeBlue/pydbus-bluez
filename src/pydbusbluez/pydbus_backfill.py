@@ -29,8 +29,9 @@ def construct(self, introspection_et, bus_name, object_path=None):
     """
     bus_name = auto_bus_name(bus_name)
     object_path = auto_object_path(bus_name, object_path)
-    return CompositeInterface(introspection_et)(self, bus_name, object_path)
-
+    ci = CompositeInterface(introspection_et)(self, bus_name, object_path)
+    backfill_async_dbus_methods(ci, introspection_et)
+    return ci
 
 ProxyMixin.construct = construct
 

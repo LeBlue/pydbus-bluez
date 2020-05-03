@@ -23,9 +23,9 @@ class BluezInterfaceObject(object):
         class property 'introspection' with a ElementTree parsed introspection xml
     """
     bus = SystemBus()
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger(__qualname__)
     logger.setLevel(logging.INFO)
-    iface = '{}.{}1'.format(ORG_BLUEZ, __name__)
+    iface = '{}.{}1'.format(ORG_BLUEZ, __qualname__)
     intro_xml = '''<?xml version="1.0" ?>
         <!DOCTYPE node
         PUBLIC '-//freedesktop//DTD D-BUS Object Introspection 1.0//EN'
@@ -35,6 +35,27 @@ class BluezInterfaceObject(object):
             <method name="Introspect">
             <arg direction="out" name="xml" type="s"/>
             </method>
+        </interface>
+        <interface name="org.freedesktop.DBus.Properties">
+            <method name="Get">
+            <arg direction="in" name="interface" type="s"/>
+            <arg direction="in" name="name" type="s"/>
+            <arg direction="out" name="value" type="v"/>
+            </method>
+            <method name="Set">
+            <arg direction="in" name="interface" type="s"/>
+            <arg direction="in" name="name" type="s"/>
+            <arg direction="in" name="value" type="v"/>
+            </method>
+            <method name="GetAll">
+            <arg direction="in" name="interface" type="s"/>
+            <arg direction="out" name="properties" type="a{sv}"/>
+            </method>
+            <signal name="PropertiesChanged">
+            <arg name="interface" type="s"/>
+            <arg name="changed_properties" type="a{sv}"/>
+            <arg name="invalidated_properties" type="as"/>
+            </signal>
         </interface>
         </node>
     '''
@@ -132,6 +153,13 @@ class BluezInterfaceObject(object):
     def clear(self):
         self.obj = None
 
+    @property
+    def properties(self):
+        try:
+            return self._proxy.GetAll(self.iface)
+        except Exception:
+            pass
+        return {}
 
     def __str__(self):
         return '{}(obj=\'{}\',name=\'{}\')'.format(self.__class__.__name__.split('.')[-1], self.obj, self.name)

@@ -3,7 +3,7 @@ from time import sleep
 from pydbus import SystemBus, Variant
 
 from .bzutils import BluezInterfaceObject
-from .object_manager import get_managed_objects, BluezObjectManager
+from .object_manager import BluezObjectManager
 from . import error as bz
 from .pydbus_backfill import ProxyMethodAsync
 
@@ -14,7 +14,7 @@ from xml.etree import ElementTree as ET
 
 class Adapter(BluezInterfaceObject):
 
-    iface = 'org.bluez.{}1'.format(__name__)
+    iface = 'org.bluez.{}1'.format(__qualname__)
     intro_xml = '''<?xml version="1.0" ?>
         <!DOCTYPE node
         PUBLIC '-//freedesktop//DTD D-BUS Object Introspection 1.0//EN'
@@ -130,6 +130,17 @@ class Adapter(BluezInterfaceObject):
     '''
     introspection = ET.fromstring(intro_xml)
 
+    @staticmethod
+    def list():
+        l = []
+        for c in BluezObjectManager.get_childs(only_direct=True):
+            try:
+                name = c.split('/')[-1]
+                l.append(Adapter(name))
+            except:
+                pass
+        return l
+
     @bz.convertBluezError
     def __init__(self, name):
         try:
@@ -189,29 +200,48 @@ class Adapter(BluezInterfaceObject):
         '''
             returns list with all scanned/connected/paired devices
         '''
-        return [ Device(adapter=self, obj=obj) for obj in get_managed_objects(self.bus, self.obj + '/dev') if len(obj.split('/')) == 5 ]
+        l = []
+        for obj in BluezObjectManager.get_childs(self.obj, only_direct=True):
+            try:
+                l.append(Device(adapter=self, obj=obj))
+            except:
+                pass
+        return l
 
-
-    def onDeviceAdded(self, func, *args, **kwargs):
+    def onDeviceAdded(self, func, *args, init=False, **kwargs):
         '''
             Registers callback for new device added/discovered
+
+            func: callback function(device: Device, properties: dict, *args, **kwargs)
+            init: set to True, to call func on all already existing devices
         '''
         om = BluezObjectManager.get()
         if func:
-            def onDeviceAddedCallback(self_ref, added_obj, added_if, *cbargs, **cbkwargs):
+            def onDeviceAddedCallback(self_adapter, added_obj, added_if, *cbargs, **cbkwargs):
                 if Device.iface in added_if:
                     addr = None
+                    properties = added_if[Device.iface]
                     if 'Address' in added_if[Device.iface]:
                         addr = added_if[Device.iface]['Address']
-                    d = Device(self, addr=addr, obj=added_obj)
+                    device = Device(self_adapter, addr=addr, obj=added_obj)
                     if 'filter_interfaces' in cbkwargs:
                         del cbkwargs['filter_interfaces']
 
-                    self.logger.debug('call onDeviceAddedCallback: func: %s(%s,%s,%s)', str(func), str(d), str(cbargs), str(cbkwargs))
-                    func(d, *cbargs, **cbkwargs)
+                    self.logger.debug('call onDeviceAddedCallback: func: %s(%s,%s,%s)', str(func), str(device), str(cbargs), str(cbkwargs))
+                    func(device, properties, *cbargs, **cbkwargs)
 
             self.logger.debug('add onDeviceAddedCallback: func: %s(%s,%s,%s)', str(onDeviceAddedCallback), str(self), str(args), str(kwargs))
             om.onObjectAdded(self, onDeviceAddedCallback, *args, filter_interfaces=Device.iface, **kwargs)
+            if init:
+                dev_objs = om.childs(self, only_direct=True)
+                for d in dev_objs:
+                    try:
+                        dev = Device(self, obj=d)
+                        props = dev.properties
+                    except:
+                        continue
+                    func(dev, props, *args, **kwargs)
+
         else:
             om.onObjectAdded(None, None)
 
@@ -260,7 +290,7 @@ class Adapter(BluezInterfaceObject):
 
 class Device(BluezInterfaceObject):
 
-    iface = 'org.bluez.{}1'.format(__name__)
+    iface = 'org.bluez.{}1'.format(__qualname__)
     intro_xml = '''<?xml version="1.0" ?>
         <!DOCTYPE node
         PUBLIC '-//freedesktop//DTD D-BUS Object Introspection 1.0//EN'

@@ -73,7 +73,13 @@ class BluezNotConnectedError(BluezError):
 class BluezNotPermittedError(BluezError):
     pass
 
-class BluezDecodeError(BluezError):
+class BluezFormatError(BluezError):
+    pass
+
+class BluezFormatEncodeError(BluezFormatError):
+    pass
+
+class BluezFormatDecodeError(BluezFormatError):
     pass
 
 # Todo
@@ -134,6 +140,7 @@ def getBluezPropOrRaise(proxy, prop):
         getDBusError(e)
     if attr == None:
         raise BluezDoesNotExistError("property not found: " + prop)
+    return attr
 
 
 def getDBusError(err):
@@ -141,6 +148,9 @@ def getDBusError(err):
     if not isinstance(err, BaseException):
         raise TypeError(
             'Need a BaseException subclass, got: {}'.format(str(err)))
+
+    if not isinstance(err, Exception):
+        raise err from None
 
     if isinstance(err, KeyError):
         if not err.args or len(err.args) == 0:

@@ -2,12 +2,12 @@ __version__ = "0.4.4"
 
 from .gatt import Gatt, GattService, GattCharacteristic, GattDescriptor
 from .device import Device, Adapter
-from .object_manager import BluezObjectManager as Bluez
+from .object_manager import BluezObjectManager as ObjectManager
 from .error import *
 from .format import *
 
 __all__ = (
-    'Bluez',
+    'ObjectManager',
     'Adapter',
     'Device',
     'Gatt',
