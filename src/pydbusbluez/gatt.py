@@ -567,7 +567,6 @@ class GattCharacteristic(BluezInterfaceObject):
     def notifyOff(self):
         if self.obj:
             try:
-                self.onPropertiesChanged(None)
                 if self.notifying:
                     self._proxy.StopNotify()
             except bzerror.BluezError:

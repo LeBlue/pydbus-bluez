@@ -228,7 +228,7 @@ class FormatTuple(FormatBase):
                     'Expected {} number of values for format: {} ({}}'.format(len(self.sub_cls), self.__class__.__name__, self._sub_str()))
         except TypeError:
             raise TypeError(
-                'Expected list with {} number of values for format: {} ({})'.format(len(self.sub_cls), self.__class__.__name__, self._sub_str())) from None
+                'Expected iterable with {} number of values for format: {} ({})'.format(len(self.sub_cls), self.__class__.__name__, self._sub_str())) from None
         self.value = value
 
     def _sub_str(self):
@@ -271,7 +271,7 @@ class FormatTuple(FormatBase):
             value = value[len_get:]
             dec_vals.append(sub.decode(v))
 
-        return cls(dec_vals)
+        return cls(tuple(dec_vals))
 
     def encode(self):
         enc_vals = b''
