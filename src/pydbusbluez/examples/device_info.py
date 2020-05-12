@@ -6,7 +6,7 @@ from pydbusbluez.gatt import Gatt, FormatUint8, FormatBitfield
 from pydbusbluez.gatt_generic import device_information
 import sys
 
-from gi.repository import GObject
+from gi.repository.GLib import MainLoop, timeout_add_seconds
 
 from argparse import ArgumentParser
 
@@ -131,7 +131,7 @@ def main():
         sleep(args.wait)
 
     if args.loop:
-        loop = GObject.MainLoop.new(None, False)
+        loop = MainLoop.new(None, False)
 
         for dinfo_char in dev_info.chars:
             if dinfo_char.obj:
@@ -139,7 +139,7 @@ def main():
                 dinfo_char.onPropertiesChanged(print_char)
 
                 # add cyclic read every 1 sec
-                GObject.timeout_add_seconds(1, read_char, dinfo_char)
+                timeout_add_seconds(1, read_char, dinfo_char)
 
 
         try:

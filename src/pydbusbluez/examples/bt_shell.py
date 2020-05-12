@@ -456,6 +456,9 @@ class BTShell(cmd.Cmd):
 
         try:
             self.gatt = self.bt_connect()
+            if not self.gatt:
+                print('Connect failed')
+                return
             print('Connected', file=sys.stderr)
             self.clp_cache = self.build_clpt_cache_gatt()
 

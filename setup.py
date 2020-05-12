@@ -55,7 +55,8 @@ setup(
    ],
    entry_points={
       'console_scripts': [
-         'pydbus_bluez_dev_info = {}.device_info:main'.format(pkgname),
+         'pydbusbluez_dev_info = {}.examples.device_info:main'.format(pkgname),
+         'pydbusbluez_shell = {}.examples.bt_shell:main'.format(pkgname),
      ]
    }
 )
