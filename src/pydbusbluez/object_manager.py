@@ -120,7 +120,7 @@ class BluezObjectManager(object):
             self.logger.debug('add onObjectAddedCallback: func: %s(%s,%s,%s)', func, parent_obj, args, kwargs)
 
             def onObjectAddedCallback(added_obj_path, added_interfaces, *cbargs, **cbkwargs):
-                print("Called:")
+
                 if filter_interface and filter_interface not in added_interfaces:
                     return
 
