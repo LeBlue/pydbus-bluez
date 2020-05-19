@@ -126,12 +126,6 @@ def main():
     else:
         GATT = []
 
-
-    # gatt = None
-    # if args.address:
-    #     gatt = bt_connect(GATT, args.adapter, args.address, args.scan_duration)
-
-
     shell = BTShell(GATT, device_addr=args.address, adapter=args.adapter, scan_duration=args.scan_duration)
     # shell.make_prompt()
     # add connect command
@@ -139,13 +133,7 @@ def main():
         shell.cmdqueue.append('connect '+ args.address)
 
     shell.load_scripts(args.script)
-    # try:
-    #     for script in args.script:
-    #         with open(script) as f:
-    #             shell.cmdqueue.extend(f.read().splitlines())
-    # except FileNotFoundError as e:
-    #     print(str(e))
-    #     sys.exit(1)
+
     try:
         shell.cmdloop()
     except KeyboardInterrupt:
@@ -314,9 +302,6 @@ class BTShell(cmd.Cmd):
             o.write(exp)
         except bluez.BluezError as e:
             print('set: ', arg, str(e), file=sys.stderr)
-
-
-
 
     def complete_set(self, text, line, begidx, endidx):
         if len(line) != endidx:
@@ -503,6 +488,17 @@ class BTShell(cmd.Cmd):
     def complete_scan(self, text, line, begidx, endidx):
         return [ en for en in ['on', 'off'] if en.startswith(text) ]
 
+    def do_remove(self, arg):
+        'remove device'
+        #    d = bluez.Device(name=self.cli_args.device, adapter=hci)
+        #    d.remove()
+        if self.gatt and self.gatt.dev:
+            self.gatt.dev.remove()
+        else:
+            if self.device_addr:
+                hci = bluez.Adapter(self.adapter)
+                hci.remove_device(self.device_addr)
+        print('Done', file=sys.stderr)
 
     def do_db_schema(self, arg):
         'dump resolved gatt schema'
