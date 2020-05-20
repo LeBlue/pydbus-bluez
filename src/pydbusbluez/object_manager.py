@@ -95,9 +95,6 @@ class BluezObjectManager(object):
 
         if only_direct:
             pathlen = len(filter.split('/'))
-            print('filter:', filter)
-            print('pathlen:', pathlen)
-            # print(objs)
             return [ obj for obj in objs if obj.startswith(filter) and pathlen == len(obj.split('/')) ]
 
 
@@ -119,16 +116,15 @@ class BluezObjectManager(object):
                 add_cb = True
             self.logger.debug('add onObjectAddedCallback: func: %s(%s,%s,%s)', func, parent_obj, args, kwargs)
 
-            def onObjectAddedCallback(added_obj_path, added_interfaces, *cbargs, **cbkwargs):
+            def onObjectAddedCallback(added_obj_path, added_interfaces):
 
                 if filter_interface and filter_interface not in added_interfaces:
                     return
 
                 self.logger.debug('%s, %s', added_obj_path, added_interfaces)
                 self.logger.debug('call onObjectAddedCallback: func: %s(%s,%s,%s,%s)', str(func), str(parent_obj), str(added_obj_path), str(args), str(kwargs))
-                self.logger.debug('call onObjectAddedCallback: ignored:(%s, %s)', str(cbargs), str(cbkwargs))
 
-                return func(parent_obj, added_obj_path, added_interfaces, *args, **kwargs)
+                func(parent_obj, added_obj_path, added_interfaces, *args, **kwargs)
 
             self.interfaces_added_cbs[filter] = onObjectAddedCallback
             self.logger.debug('added interface (%s) specific callback: %s', str(filter), str(onObjectAddedCallback))
@@ -162,32 +158,30 @@ class BluezObjectManager(object):
             cb(added_obj, added_interfaces)
 
 
-    def onInterfaceRemoved(self, obj, func, *args, filter_interface=None, **kwargs):
-        filter = parent_obj.obj
+    def onObjectRemoved(self, obj, func, *args, filter_interface=None, **kwargs):
 
+        filter = obj.obj
         # callback gets added
         if func:
             add_cb = False
             if not self.interfaces_removed_cbs:
                 add_cb = True
-            self.logger.debug('add onObjectRemovedCallback: func: %s(%s,%s,%s)', func, parent_obj, args, kwargs)
+            self.logger.debug('add onObjectRemovedCallback: func: %s(%s,%s,%s)', func, obj, args, kwargs)
 
-            def onObjectRemovedCallback(removed_obj_path, removed_interfaces, *cbargs, **cbkwargs):
+            def onObjectRemovedCallback(removed_obj_path, removed_interfaces):
                 if filter_interface and filter_interface not in removed_interfaces:
                     return
 
                 self.logger.debug('%s, %s', removed_obj_path, removed_interfaces)
-                self.logger.debug('call onObjectRemovedCallback: func: %s(%s,%s,%s,%s)', str(func), str(parent_obj), str(removed_obj_path), str(args), str(kwargs))
-                self.logger.debug('call onObjectRemovedCallback: ignored:(%s, %s)', str(cbargs), str(cbkwargs))
-
-                return func(parent_obj, removed_obj_path, removed_interfaces, *args, **kwargs)
+                self.logger.debug('call onObjectRemovedCallback: func: %s(%s,%s,%s,%s)', str(func), str(obj), str(removed_obj_path), str(args), str(kwargs))
+                return func(removed_obj_path, removed_interfaces, *args, **kwargs)
 
             self.interfaces_removed_cbs[filter] = onObjectRemovedCallback
             self.logger.debug('removed interface specific %s cb %s', str(filter), str(onObjectRemovedCallback))
 
 
             if add_cb:
-                self._proxy.onInterfacesAdded = self._interfaces_removed
+                self._proxy.onInterfacesRemoved = self._interfaces_removed
 
         # callback gets removed
         else:

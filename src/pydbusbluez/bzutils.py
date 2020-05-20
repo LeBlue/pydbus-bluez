@@ -77,6 +77,11 @@ class BluezInterfaceObject(object):
     def obj(self, obj):
         self._obj = obj
         if obj:
+            if self._proxy:
+                try:
+                    self._proxy.onPropertiesChanged = None
+                except:
+                    pass
             self._proxy = self.bus.construct(self.introspection, ORG_BLUEZ, obj)
             try:
                 _ = self._proxy.GetAsync
@@ -111,6 +116,7 @@ class BluezInterfaceObject(object):
                 prop_proxy = self._proxy
             else:
                 prop_proxy = self.bus.construct(self.introspection, ORG_BLUEZ, self.obj)
+                self._proxy = prop_proxy
             if not func:
                 try:
                     prop_proxy.onPropertiesChanged = None

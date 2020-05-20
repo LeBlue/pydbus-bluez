@@ -177,18 +177,21 @@ class Gatt(object):
                     c._proxy.onPropertiesChanged = None
                 except AttributeError:
                     pass
+
                 c.obj = None
-                c.service = None
-                c._proxy = None
+
+                #c.service = None
+                # c._proxy = None
             try:
                 s._proxy.onPropertiesChanged = None
             except AttributeError:
                 pass
 
-            s.chars = None
             s.obj = None
-            s._proxy = None
-        self.services = None
+            #s.chars = None
+
+            # s._proxy = None
+        #self.services = None
 
     def help_keys(self):
         print('Valid attributes for the Gatt object are:', file=sys.stderr)
@@ -600,24 +603,7 @@ class GattCharacteristic(BluezInterfaceObject):
         self.descriptors.append(new_descriptor)
         return new_descriptor
 
-    # def _resolve_descriptors(self, objects, warn_unmatched=False):
-        # matched_descriptors = []
-        # for obj in objects:
-        #     proxy = SystemBus().construct(GattDescriptor.introspection, ORG_BLUEZ, obj)
-        #     uuid = bzerror.getBluezPropOrNone(proxy, 'UUID')
 
-        #     if not uuid:
-        #         # TODO: remember that this failed to match?
-        #         continue
-
-        #     for desc in self.descriptors:
-        #         if desc.uuid == uuid:
-        #             # desc.obj = obj
-        #             desc._proxy = proxy
-        #             desc._obj = obj
-        #             matched_descriptors.append(obj)
-
-        # return matched_descriptors
     def _resolve_descriptors(self, objects, warn_unmatched=False, resolve_unknown=True):
         '''
             match dbus object paths to GattDescriptors
@@ -663,7 +649,6 @@ class GattCharacteristic(BluezInterfaceObject):
 
             # check if format must be adjusted
             if issubclass(self.fmt, FormatAutoCRF):
-                print("AutoCRF format")
                 crfs = [ x for x in self.descriptors if x.name == 'CRF']
                 if any(crfs):
                     try:
@@ -671,7 +656,7 @@ class GattCharacteristic(BluezInterfaceObject):
                         fmt = FormatAutoCRF.fromCRF(_make_id(self.name), crf)
                         self.fmt = fmt
                     except Exception as e:
-                        print(str(e))
+                        self.logger.warning('%s: %s', self.__class__.__name__, str(e))
                         raise
 
 
