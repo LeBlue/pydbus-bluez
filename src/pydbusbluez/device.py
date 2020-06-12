@@ -326,6 +326,7 @@ class Device(BluezInterfaceObject):
             <property access="readwrite" name="Blocked" type="b"/>
             <property access="read" name="LegacyPairing" type="b"/>
             <property access="read" name="RSSI" type="n"/>
+            <property access="read" name="MTU" type="n"/>
             <property access="read" name="Connected" type="b"/>
             <property access="read" name="UUIDs" type="as"/>
             <property access="read" name="Modalias" type="s"/>
@@ -466,6 +467,9 @@ class Device(BluezInterfaceObject):
     def rssi(self):
         return self._getBluezPropOrNone('RSSI')
 
+    @property
+    def MTU(self):
+        return self._getBluezPropOrNone('MTU', fail_ret=0)
 
     @property
     def services_resolved(self):
