@@ -271,7 +271,7 @@ class FormatTuple(FormatBase):
             value = value[len_get:]
             dec_vals.append(sub.decode(v))
 
-        return cls(tuple(dec_vals))
+        return cls(list(dec_vals))
 
     def encode(self):
         enc_vals = b''
