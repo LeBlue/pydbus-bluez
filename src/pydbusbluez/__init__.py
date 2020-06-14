@@ -35,6 +35,7 @@ __all__ = (
     'BluezDoesNotExistError',
     'BluezNotConnectedError',
     'BluezNotPermittedError',
+    'BluezFormatDecodeError',
     'FormatBase',
     'FormatRaw',
     'FormatUint',

@@ -28,19 +28,50 @@ def cli_aruments():
     return args
 
 
-def device_found(device_object, properties, print_properties):
-    print(device_object, device_object.device_name)
-    if print_properties:
-        print(properties)
+def device_found(device_object, properties, print_properties, some=None):
+
+    print('[NEW]', device_object, device_object.device_name, str(some))
+
+    if properties:
+        for prop, value in properties.items():
+            print('[CHG] Device',  id(device_object), device_object.name, prop, str(value))
+
+    device_object.onPropertiesChanged(device_changed, print_properties)
+    device_object.adapter.onDeviceRemoved(device_object, device_removed)
+    # ObjectManager.get().onObjectRemoved(device_object, device_removed)
+
+
+def device_removed(adapter, device_object):
+    print('[DEL]', id(device_object), device_object, device_object.device_name)
+    device_object.clear()
+    # print(device_object._proxy)
+    # device_object.clear()
+    # print(device_object._proxy)
+    # del device_object._proxy
+
+    # del device_object
+    # print(device_object._proxy)
+
+
+def device_changed(device_object, properties, print_properties):
+    print('[CHG]',  id(device_object), device_object, device_object.device_name)
+
+    if properties:
+        for prop, value in properties.items():
+            print('[CHG] Device', device_object.name, prop, str(value))
+
 
 def adapter_changed(adapter, properties, loop):
-    print('Adapter changed:', str(adapter), properties)
-    if 'Discovering' in properties and properties['Discovering']:
-        print('Scan enabled')
+    print('Controller changed:', str(adapter), properties)
 
-    if 'Powered' in properties and not properties['Powered']:
-        print('Adapter unpowered/disconnected', file=sys.stderr)
-        loop.quit()
+    for prop, value in properties.items():
+        print('[CHG] Controller', adapter.name, prop, str(value))
+
+
+def adapter_removed(adapter):
+    print('[DEL]', id(adapter), adapter, adapter.name)
+    adapter.onDeviceAdded(None)
+    adapter.onPropertiesChanged(None)
 
 
 def scan_timeout(loop, *args, **kwargs):
@@ -61,8 +92,9 @@ def main():
         timeout_add_seconds(args.scan_duration, scan_timeout, loop)
 
     hci.onPropertiesChanged(adapter_changed, loop)
-    hci.onDeviceAdded(device_found, args.properties, init=True)
-    hci.scan()
+    hci.onDeviceAdded(device_found, args.properties, init=True, some='Foo')
+    # hci.onDeviceRemoved(device_removed, args.properties)
+    #hci.scan()
 
     # for d in hci.devices():
     #     device_found(d, d.properties, args.properties)
@@ -73,7 +105,10 @@ def main():
         pass
     finally:
         try:
+            hci.onDeviceAdded(None)
+            hci.onPropertiesChanged(None)
             hci.scan(enable=False)
+            hci.clear()
         except:
             pass
 
