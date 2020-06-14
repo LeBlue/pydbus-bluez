@@ -1,3 +1,6 @@
+
+from functools import wraps, partial
+
 from gi.repository.GLib import Error as GLibError
 from gi.repository import GLib
 
@@ -99,6 +102,7 @@ DoesNotExist
 '''
 
 def convertBluezError(func):
+    @wraps(func)
     def wrapper(*args, **kwargs):
         return callBluezFunction(func, *args, **kwargs)
 
@@ -261,6 +265,7 @@ __all__ = (
     'BluezDoesNotExistError',
     'BluezNotConnectedError',
     'BluezNotPermittedError',
+    'BluezFormatDecodeError',
     'callBluezFunction',
     'convertBluezError',
     'getBluezPropOrNone',

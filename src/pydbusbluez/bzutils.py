@@ -1,4 +1,6 @@
 
+from functools import wraps, partial, partialmethod
+
 from pydbus import SystemBus
 from pydbus.proxy import ProxyMixin, CompositeInterface, Interface
 from pydbus.auto_names import auto_bus_name, auto_object_path
@@ -16,6 +18,8 @@ Interface = InterfaceBackfilled
 
 ORG_BLUEZ = 'org.bluez'
 
+logging.basicConfig()
+
 class BluezInterfaceObject(object):
     """All bluez dbus interfaces with the same name (org.bluez.NAME1)
 
@@ -24,7 +28,7 @@ class BluezInterfaceObject(object):
     """
     bus = SystemBus()
     logger = logging.getLogger(__qualname__)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.ERROR)
     iface = '{}.{}1'.format(ORG_BLUEZ, __qualname__)
     intro_xml = '''<?xml version="1.0" ?>
         <!DOCTYPE node
@@ -75,13 +79,16 @@ class BluezInterfaceObject(object):
 
     @obj.setter
     def obj(self, obj):
+        if self._obj == obj:
+            return
+
+        try:
+            self.onPropertiesChanged(None)
+        except AttributeError:
+            pass
         self._obj = obj
+
         if obj:
-            if self._proxy:
-                try:
-                    self._proxy.onPropertiesChanged = None
-                except:
-                    pass
             self._proxy = self.bus.construct(self.introspection, ORG_BLUEZ, obj)
             try:
                 _ = self._proxy.GetAsync
@@ -90,7 +97,7 @@ class BluezInterfaceObject(object):
         else:
             try:
                 self.onPropertiesChanged(None)
-            except Exception:
+            except AttributeError:
                 pass
             self._obj = None
             self._proxy = None
@@ -102,41 +109,38 @@ class BluezInterfaceObject(object):
     def onPropertiesChanged(self, func, *args, prop=None, **kwargs):
         """
 
-        :param      func:    The function
+        :param      func:    The function to call when a property emitted a changed signal
         :type       func:    signature (self, prop_dict, *args, **kwargs)
         :param      args:    The arguments passed to func
         :type       args:    positional arguments to func
-        :param      prop:    The property, triggering func, or None for triggering for all changed properties
+        :param      prop:    The property, fo which func should be called, or None for triggering for all changed properties
         :type       prop:    str
         :param      kwargs:  The keywords arguments to func
         :type       kwargs:  dictionary
         """
         if self.obj:
-            if self._proxy:
-                prop_proxy = self._proxy
-            else:
-                prop_proxy = self.bus.construct(self.introspection, ORG_BLUEZ, self.obj)
-                self._proxy = prop_proxy
             if not func:
                 try:
-                    prop_proxy.onPropertiesChanged = None
+                    self._proxy.onPropertiesChanged = None
                 except AttributeError:
                     pass
                 return
             self.logger.debug('Connecting to .PropertiesChanged on %s', self.obj)
 
-
-            def onPropertiesChangedCallback(iface, new_values, *args_int):
+            @wraps(func)
+            def properties_changed(iface, properties_values, invalidated_properties):
                 # the callback will be called with *args, arg[0] is Interface, arg[1] is dict with all
                 # change propteries as keys (e.g. GattChar 'Value', Device 'Connected', etc.)
                 # arg[2] invalidated propertes
                 if iface == self._def_iface_name():
-                    if not prop or prop in new_values:
-                        self.logger.debug('call onPropertiesChangedCallback: func: %s(%s,%s,%s,%s)', str(func), str(self), str(new_values), str(args), str(kwargs))
-                        func(self, new_values, *args, **kwargs)
+                    if not prop or prop in properties_values:
+                        self.logger.debug('call properties_changed: func: %s(%s,%s,%s,%s)', str(func), str(self), str(properties_values), str(args), str(kwargs))
+                        func(self, properties_values, *args, **kwargs)
 
-            prop_proxy.onPropertiesChanged = onPropertiesChangedCallback
+            self._proxy.onPropertiesChanged = properties_changed
         else:
+            if not func:
+                return
             raise bzerror.BluezDoesNotExistError(
                 'Object not set for {}'.format(str(self)))
 
@@ -157,6 +161,7 @@ class BluezInterfaceObject(object):
         return fail_ret
 
     def clear(self):
+        print("Clearing:", self)
         self.obj = None
 
     @property

@@ -134,7 +134,7 @@ class FormatPacked(FormatBase):
             v = int(self.value / pow(10, self.exponent))
         else:
             v = int(self.value)
-        #print(v)
+
         return self.pck_fmt.pack(v)
 
     def __int__(self):

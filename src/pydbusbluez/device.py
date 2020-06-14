@@ -1,5 +1,7 @@
 
 from time import sleep
+from functools import wraps, partial
+import logging
 from pydbus import SystemBus, Variant
 
 from .bzutils import BluezInterfaceObject
@@ -130,6 +132,7 @@ class Adapter(BluezInterfaceObject):
     '''
     introspection = ET.fromstring(intro_xml)
 
+
     @staticmethod
     def list():
         l = []
@@ -140,6 +143,10 @@ class Adapter(BluezInterfaceObject):
             except:
                 pass
         return l
+
+    @classmethod
+    def from_obj(cls, obj):
+        return cls(obj.split('/')[-1])
 
     @bz.convertBluezError
     def __init__(self, name):
@@ -157,8 +164,6 @@ class Adapter(BluezInterfaceObject):
         except (bz.BluezDoesNotExistError, bz.DBusUnknownObjectError):
             raise bz.BluezDoesNotExistError(
                 'Adapter not found \'{}\''.format(name)) from None
-
-
 
     @bz.convertBluezError
     def scan(self, enable=True, filters=None):
@@ -217,7 +222,7 @@ class Adapter(BluezInterfaceObject):
         '''
         om = BluezObjectManager.get()
         if func:
-            def onDeviceAddedCallback(self_adapter, added_obj, added_if, *cbargs, **cbkwargs):
+            def device_added(self_adapter, added_obj, added_if, *cbargs, **cbkwargs):
                 if Device.iface in added_if:
                     addr = None
                     properties = added_if[Device.iface]
@@ -227,44 +232,45 @@ class Adapter(BluezInterfaceObject):
                     if 'filter_interfaces' in cbkwargs:
                         del cbkwargs['filter_interfaces']
 
-                    self.logger.debug('call onDeviceAddedCallback: func: %s(%s,%s,%s)', str(func), str(device), str(cbargs), str(cbkwargs))
+                    self.logger.debug('call device_added: func: %s(%s,%s,%s)', str(func), str(device), str(cbargs), str(cbkwargs))
                     func(device, properties, *cbargs, **cbkwargs)
 
-            self.logger.debug('add onDeviceAddedCallback: func: %s(%s,%s,%s)', str(onDeviceAddedCallback), str(self), str(args), str(kwargs))
-            om.onObjectAdded(self, onDeviceAddedCallback, *args, filter_interfaces=Device.iface, **kwargs)
+            self.logger.debug('add device_added: func: %s(%s,%s,%s)', str(device_added), str(self), str(args), str(kwargs))
+            om.onObjectAdded(self, device_added, *args, filter_interfaces=Device.iface, **kwargs)
             if init:
                 dev_objs = om.childs(self, only_direct=True)
-                for d in dev_objs:
+                for dobj in dev_objs:
                     try:
-                        dev = Device(self, obj=d)
+                        dev = Device(self, obj=dobj)
                         props = dev.properties
                     except:
                         continue
                     func(dev, props, *args, **kwargs)
 
         else:
-            om.onObjectAdded(None, None)
+            om.onObjectAdded(self, None)
 
-    def onDeviceRemoved(self, func, *args, **kwargs):
+    def onDeviceRemoved(self, device, func, *args, **kwargs):
         '''
             Registers callback for device removed (either removed explicitly or scanning cache timeout)
 
-            func: callback function(dev_obj_path: Device.obj)
+            func: callback function(adapter: Bluez.Adapter, device Bluez.Device, *args, **kwargs)
         '''
         om = BluezObjectManager.get()
         if func:
-            def onDeviceRemovedCallback(removed_obj, removed_if, *cbargs, **cbkwargs):
+            def device_removed_cb(removed_device, removed_if, *cbargs, **cbkwargs):
                 if Device.iface in removed_if:
                     if 'filter_interfaces' in cbkwargs:
                         del cbkwargs['filter_interfaces']
 
-                    self.logger.debug('call onDeviceRemovedCallback: func: %s(%s,%s,%s)', str(func), str(removed_obj), str(cbargs), str(cbkwargs))
-                    func(removed_obj, *cbargs, **cbkwargs)
+                    self.logger.debug('call device_removed_cb: func: %s(%s,%s,%s)', str(func), str(removed_device), str(cbargs), str(cbkwargs))
 
-            self.logger.debug('add onDeviceRemovedCallback: func: %s(%s,%s,%s)', str(onDeviceRemovedCallback), str(self), str(args), str(kwargs))
-            om.onObjectRemoved(self, onDeviceRemovedCallback, *args, filter_interfaces=Device.iface, **kwargs)
+                    func(self, device, *cbargs, **cbkwargs)
+
+            self.logger.debug('add device_removed_cb: func: %s(%s,%s,%s)', str(device_removed_cb), str(device), str(args), str(kwargs))
+            om.onObjectRemoved(device, device_removed_cb, *args, filter_interfaces=Device.iface, **kwargs)
         else:
-            om.onObjectRemoved(None, filter_interface=None)
+            om.onObjectRemoved(device, None, filter_interface=None)
 
 
     @bz.convertBluezError
@@ -288,6 +294,12 @@ class Adapter(BluezInterfaceObject):
         '''
         self._proxy.RemoveDevice(dev_obj)
 
+    def clear(self):
+        '''
+            remove all signal subscriptions and delete proxy
+        '''
+        BluezObjectManager.get().onObjectAdded(self, None)
+        self.obj = None
 
 
 class Device(BluezInterfaceObject):

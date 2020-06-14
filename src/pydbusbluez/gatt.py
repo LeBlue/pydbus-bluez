@@ -56,7 +56,7 @@ class Gatt(object):
 
     bus = SystemBus()
     logger = logging.getLogger(ORG_BLUEZ + '.Gatt')
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
 
     def add_service(self, name, uuid):
         key_service = _make_id(name)
@@ -173,21 +173,15 @@ class Gatt(object):
     def clear(self):
         for s in self.services:
             for c in s.chars:
-                try:
-                    c._proxy.onPropertiesChanged = None
-                except AttributeError:
-                    pass
-
-                c.obj = None
+                for d in c.descriptors:
+                    d.clear()
+                c.clear()
 
                 #c.service = None
                 # c._proxy = None
-            try:
-                s._proxy.onPropertiesChanged = None
-            except AttributeError:
-                pass
+            s.clear()
 
-            s.obj = None
+            # s.obj = None
             #s.chars = None
 
             # s._proxy = None
@@ -431,7 +425,7 @@ class GattCharacteristic(BluezInterfaceObject):
             to = options['timeout']
             del options['timeout']
         else:
-            to = None
+            to = 30
 
         if options and 'offset' in options and not isinstance(options['offset'], Variant):
             options['offset'] = Variant('q', options['offset'])
@@ -449,7 +443,7 @@ class GattCharacteristic(BluezInterfaceObject):
                 try:
                     v_dec = self.fmt.decode(v)
                 except Exception as e:
-                    raise bzerror.BluezDecodeError('{}: {}, got: {}'.format(self, str(e), str(v)))
+                    raise bzerror.BluezFormatDecodeError('{}: {}, got: {}'.format(self, str(e), str(v)))
                 return v_dec
 
 
@@ -477,7 +471,7 @@ class GattCharacteristic(BluezInterfaceObject):
                             if not raw:
                                 v_dec = self.fmt.decode(value)
                         except bzerror.BluezError as e:
-                            err = bzerror.BluezDecodeError('{}: {}, got: {}'.format(self, str(e), str(value)))
+                            err = bzerror.BluezFormatDecodeError('{}: {}, got: {}'.format(self, str(e), str(value)))
                             error_cb(self, err, data)
                             return
                         success_cb(self, v_dec, data)
