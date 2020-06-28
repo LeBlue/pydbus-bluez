@@ -3,6 +3,7 @@ import sys
 from pydbus import SystemBus, Variant
 from array import array
 from xml.etree import ElementTree as ET
+from functools import wraps
 
 from .format import *
 from .format_extended import FormatAutoCRF
@@ -546,6 +547,11 @@ class GattCharacteristic(BluezInterfaceObject):
     def onValueChanged(self, func, *args, **kwargs):
         # to remove
         if self.obj:
+            if not func:
+                self.onPropertiesChanged(None)
+                return
+
+            @wraps(func)
             def valueChangedCallback(gatt_char_self, changed_values, *cbargs, **cbkwargs):
                 if 'Value' in changed_values:
                     gatt_value_obj = gatt_char_self.fmt.decode(
