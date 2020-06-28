@@ -37,7 +37,6 @@ setup(
    url='https://github.com/LeBlue/pydbus-bluez',
 
    install_requires=[
-      'simplejson',
       'pydbus;platform_system=="Linux"'
    ], #external packages as dependencies
    include_package_data=True,
