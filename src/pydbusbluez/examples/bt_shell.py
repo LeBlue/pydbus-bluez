@@ -205,7 +205,7 @@ class BTShell(cmd.Cmd):
             for script in scripts:
                 with open(script) as f:
                     print('Loading:', script)
-                    shell.cmdqueue.extend(f.read().splitlines())
+                    self.cmdqueue.extend(f.read().splitlines())
             return True
         except FileNotFoundError as e:
             print(str(e))
@@ -364,6 +364,7 @@ class BTShell(cmd.Cmd):
         if isinstance(o, bluez.GattDescriptor):
             d = o
             o = d.char
+
         print(str(o.service))
         print(str(o))
         fmt = o.fmt
@@ -371,10 +372,10 @@ class BTShell(cmd.Cmd):
             print(str(d))
             fmt = d.fmt
         else:
-            print(o.flags)
+            print('Flags:', o.flags)
 
         if not issubclass(fmt, FormatBase):
-            print('Unkown format', file=sys.stderr)
+            print('Unkown format:', str(fmt), file=sys.stderr)
         else:
             if issubclass(fmt, FormatTuple):
 
@@ -389,7 +390,6 @@ class BTShell(cmd.Cmd):
             else:
                 print('{} python native: {}'.format(str(fmt.__name__), str(fmt.native_types), file=sys.stderr))
 
-        print(str(fmt))
 
     complete_info = _char_names_complete
 
