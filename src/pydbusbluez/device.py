@@ -509,7 +509,7 @@ class Device(BluezInterfaceObject):
 
         self.logger.debug('resolved: %s',self._proxy.ServicesResolved)
         while not self.services_resolved and waitfor < wait_resolved_sec:
-            if not self._proxy.Connected:
+            if not self.connected:
                 raise bz.BluezNotConnectedError('Not connected')
             #waitfor -= 1
             waitfor += 1
@@ -532,5 +532,8 @@ class Device(BluezInterfaceObject):
         self._proxy.Trusted = on
         return self.trusted
 
+    @property
+    def UUIDs(self):
+        return self._getBluezPropOrNone('UUIDs', fail_ret=[])
 
 __all__ = ('Device', 'Adapter')
