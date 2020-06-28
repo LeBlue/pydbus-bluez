@@ -232,11 +232,8 @@ class FormatTuple(FormatBase):
         self.value = value
 
     def _sub_str(self):
-        scn = None
-        try:
-            scn = self.sub_cls_names
-        except AttributeError:
-            pass
+
+        scn = self.sub_cls_names if self._is_named() else None
 
         if scn and len(scn) == len(self):
             d = {}
@@ -244,6 +241,14 @@ class FormatTuple(FormatBase):
                 d[n] = self.sub_cls[idx]
             return str(d)
         return '({})'.format(','.join([ sub_c.__name__ for sub_c in self.sub_cls]))
+
+    def _is_named(self):
+        try:
+            _ = self.sub_cls_names
+        except AttributeError:
+            return False
+        return True
+
 
 # del not suported, wonder if wee need it
 #    def __delitem__(self, key):
@@ -253,12 +258,45 @@ class FormatTuple(FormatBase):
         return len(self.sub_cls)
 
     def __getitem__(self, key):
-        return self.value[key]
+        if isinstance(key, int):
+            return self.value[key]
+        elif isinstance(key, str):
+            if not self._is_named():
+                raise TypeError('index must be int')
+            try:
+                i = self.sub_cls_names.index(key)
+            except ValueError:
+                raise KeyError(key)
+            return self.value[i]
+        raise TypeError('index must be str or int')
 
     def __setitem__(self, key, sub_value):
-        self.value[key] = sub_value
+        if isinstance(key, int):
+            self.value[key] = sub_value
+        elif isinstance(key, str):
+            if not self._is_named():
+                raise TypeError('index must be int')
+            try:
+                i = scn.index(key)
+            except ValueError:
+                raise KeyError(key)
+            self.value[i] = sub_value
 
+        raise TypeError('index must be str or int')
 
+    def keys(self):
+        if not self._is_named():
+            return []
+        return self.sub_cls_names
+
+    def values(self):
+        return self.value
+
+    def items(self):
+        if not self._is_named():
+            return []
+
+        return [ (self.sub_cls_names[idx], value) for idx, value in enumerate(self.value) ]
 
     @classmethod
     def decode(cls, value):
