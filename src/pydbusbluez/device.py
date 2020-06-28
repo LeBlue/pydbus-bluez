@@ -375,6 +375,21 @@ class Device(BluezInterfaceObject):
 
     @bz.convertBluezError
     def __init__(self, adapter=None, addr=None, obj=None):
+
+        if not obj and (not adapter and  not addr):
+            raise ValueError('Either \'obj\' or \'adapter\' and \'addr\' must be given')
+
+        if adapter and addr:
+            if isinstance(adapter, str):
+                tmp_obj = '/org/bluez/{}/dev_{}'.format(adapter, addr.upper().replace(':', '_'))
+                adapter = Adapter(adapter)
+            else:
+                tmp_obj = '{}/dev_{}'.format(adapter.obj, addr.upper().replace(':', '_'))
+
+            if obj and tmp_obj != obj:
+                raise ValueError('\'obj\' and \'adapter\' and \'addr\' given, but do not match')
+            obj = tmp_obj
+
         super().__init__(obj, addr)
         if obj and not addr:
             if addr:
