@@ -89,11 +89,14 @@ class Gatt(object):
 
         self.logger.debug(str(self.__dict__))
 
-        self.resolve(15, warn_unmatched=warn_unmatched)
+        self.resolve(20, warn_unmatched=warn_unmatched)
 
     # gatt object can ONLY be created After device is connected and services are resolved
     @bzerror.convertBluezError
-    def resolve(self, resolve_timeout=0, warn_unmatched=True, resolve_unknown=True):
+    def resolve(self, resolve_timeout=10, warn_unmatched=True, resolve_unknown=True):
+
+        if not self.dev.connected:
+            raise bzerror.BluezFailedError('Not connected')
 
         if not self.dev.services_resolved:
             self.logger.debug('Services not resolved, waiting for it for max: {}s'.format(resolve_timeout))
