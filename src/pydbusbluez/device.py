@@ -292,6 +292,13 @@ class Adapter(BluezInterfaceObject):
         '''
             remove device: disconnect, remove pairing keys, delete gatt db cache (in bluez)
         '''
+        if not dev_obj:
+            raise ValueError('dev_obj argument is not valid')
+        if len(dev_obj) == 17 and len(dev_obj.split(':')) == 6:
+            dev_obj = "{}/dev_{}".format(self.obj, dev_obj.upper().replace(':', '_'))
+        if len(dev_obj) == 37 and not dev_obj.startswith('/org/bluez/hci') or len(dev_obj.split('/')) == 5:
+            raise ValueError('dev_obj argument is not valid')
+
         self._proxy.RemoveDevice(dev_obj)
 
     def clear(self):
