@@ -451,7 +451,7 @@ class Device(BluezInterfaceObject):
     @bz.convertBluezError
     def connect(self):
         try:
-            self._proxy.Connect(timeout=10)
+            self._proxy.Connect(timeout=30)
         except Exception as e:
             self.logger.error(str(e))
             pass
