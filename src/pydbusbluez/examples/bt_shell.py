@@ -161,7 +161,7 @@ class BTShell(cmd.Cmd):
     prompt_start = '(bt) '
     file = None
 
-    def __init__(self, gatt_db_description, device_addr, *args, adapter='hci0', scan_duration=5, **kwargs):
+    def __init__(self, gatt_db_description, device_addr, *args, adapter='hci0', scan_duration=8, **kwargs):
         self.gatt = None
         self.gatt_db_description = gatt_db_description
         self.adapter = adapter
