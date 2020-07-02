@@ -9,18 +9,6 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.ERROR)
 
-class DBusError(Exception):
-    pass
-
-class DBusInvalidArgsError(DBusError):
-    pass
-
-class DBusUnknownObjectError(DBusError):
-    pass
-
-class DBusTimeoutError(DBusError):
-    pass
-
 class BluezError(Exception):
     def __str__(self):
         return '{}: {}'.format(self.__class__.__name__, self.args[0] if len(self.args) > 0 else '')
@@ -83,6 +71,18 @@ class BluezFormatEncodeError(BluezFormatError):
     pass
 
 class BluezFormatDecodeError(BluezFormatError):
+    pass
+
+class DBusError(BluezError):
+    pass
+
+class DBusInvalidArgsError(DBusError):
+    pass
+
+class DBusUnknownObjectError(DBusError):
+    pass
+
+class DBusTimeoutError(DBusError):
     pass
 
 # Todo
@@ -174,7 +174,7 @@ def getDBusError(err):
         raise err
 
     ml = err.message.split(':')
-    if ml[0] != 'GDBus.Error':
+    if not ml or not ml[0].endswith('GDBus.Error'):
         #raise err
         raise err from None
 
