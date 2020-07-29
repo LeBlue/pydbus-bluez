@@ -209,6 +209,11 @@ class Gatt(object):
                             if d.obj:
                                 print(str(d))
 
+    def __getattr__(self, name):
+        ''' will only get called for undefined attributes '''
+        raise AttributeError("No member '{}' contained in Gatt object.".format(name))
+
+
 class GattService(BluezInterfaceObject):
 
     iface = 'org.bluez.{}1'.format(__qualname__)
@@ -344,6 +349,11 @@ class GattService(BluezInterfaceObject):
 
         assert(0 == len(objs_unmatched))
         return objs_matched
+
+    def __getattr__(self, name):
+        ''' will only get called for undefined attributes '''
+        raise AttributeError("No member '{}' contained in GattService object.".format(name))
+
 
 class GattCharacteristic(BluezInterfaceObject):
 
@@ -673,7 +683,9 @@ class GattCharacteristic(BluezInterfaceObject):
         assert(0 == len(objs_unmatched))
         return objs_matched
 
-
+    def __getattr__(self, name):
+        ''' will only get called for undefined attributes '''
+        raise AttributeError("No member '{}' contained in GattCharacteristic object.".format(name))
 
 class GattDescriptor(BluezInterfaceObject):
 
