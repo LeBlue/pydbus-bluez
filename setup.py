@@ -41,14 +41,13 @@ setup(
    ], #external packages as dependencies
    include_package_data=True,
    license='MIT',
+   python_requires='~=3.7',
    classifiers=[
       'Development Status :: 4 - Beta',
       'Environment :: Console',
       'Intended Audience :: Developers',
       'License :: OSI Approved :: MIT License',
       'Operating System :: Linux',
-      'Programming Language :: Python :: 3.5',
-      'Programming Language :: Python :: 3.6',
       'Programming Language :: Python :: 3.7',
       'Topic :: Software Development :: Testing',
    ],
