@@ -1,4 +1,3 @@
-
 from functools import wraps, partial, partialmethod
 
 from pydbus import SystemBus
@@ -16,21 +15,23 @@ from .pydbus_backfill import InterfaceBackfilled, construct, backfill_async_dbus
 ProxyMixin.construct = construct
 Interface = InterfaceBackfilled
 
-ORG_BLUEZ = 'org.bluez'
+ORG_BLUEZ = "org.bluez"
 
 logging.basicConfig()
+
 
 class BluezInterfaceObject(object):
     """All bluez dbus interfaces with the same name (org.bluez.NAME1)
 
-        Should not be used directly, derived classes must provide the
-        class property 'introspection' with a ElementTree parsed introspection xml
+    Should not be used directly, derived classes must provide the
+    class property 'introspection' with a ElementTree parsed introspection xml
     """
+
     bus = SystemBus()
     logger = logging.getLogger(__qualname__)
     logger.setLevel(logging.ERROR)
-    iface = '{}.{}1'.format(ORG_BLUEZ, __qualname__)
-    intro_xml = '''<?xml version="1.0" ?>
+    iface = "{}.{}1".format(ORG_BLUEZ, __qualname__)
+    intro_xml = """<?xml version="1.0" ?>
         <!DOCTYPE node
         PUBLIC '-//freedesktop//DTD D-BUS Object Introspection 1.0//EN'
         'http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd'>
@@ -62,7 +63,7 @@ class BluezInterfaceObject(object):
             </signal>
         </interface>
         </node>
-    '''
+    """
     introspection = ET.fromstring(intro_xml)
 
     @bzerror.convertBluezError
@@ -71,7 +72,6 @@ class BluezInterfaceObject(object):
         self._obj = None
         self.obj = obj
         self.name = name
-
 
     @property
     def obj(self):
@@ -103,7 +103,7 @@ class BluezInterfaceObject(object):
             self._proxy = None
 
     def _def_iface_name(self):
-        return '{}.{}1'.format(ORG_BLUEZ, self.__class__.__name__)
+        return "{}.{}1".format(ORG_BLUEZ, self.__class__.__name__)
 
     @bzerror.convertBluezError
     def onPropertiesChanged(self, func, *args, prop=None, **kwargs):
@@ -125,7 +125,7 @@ class BluezInterfaceObject(object):
                 except AttributeError:
                     pass
                 return
-            self.logger.debug('Connecting to .PropertiesChanged on %s', self.obj)
+            self.logger.debug("Connecting to .PropertiesChanged on %s", self.obj)
 
             @wraps(func)
             def properties_changed(iface, properties_values, invalidated_properties):
@@ -134,7 +134,14 @@ class BluezInterfaceObject(object):
                 # arg[2] invalidated propertes
                 if iface == self._def_iface_name():
                     if not prop or prop in properties_values:
-                        self.logger.debug('call properties_changed: func: %s(%s,%s,%s,%s)', str(func), str(self), str(properties_values), str(args), str(kwargs))
+                        self.logger.debug(
+                            "call properties_changed: func: %s(%s,%s,%s,%s)",
+                            str(func),
+                            str(self),
+                            str(properties_values),
+                            str(args),
+                            str(kwargs),
+                        )
                         func(self, properties_values, *args, **kwargs)
 
             self._proxy.onPropertiesChanged = properties_changed
@@ -142,8 +149,8 @@ class BluezInterfaceObject(object):
             if not func:
                 return
             raise bzerror.BluezDoesNotExistError(
-                'Object not set for {}'.format(str(self)))
-
+                "Object not set for {}".format(str(self))
+            )
 
     def _getBluezPropOrNone(self, prop, fail_ret=None):
         try:
@@ -173,4 +180,6 @@ class BluezInterfaceObject(object):
         return {}
 
     def __str__(self):
-        return '{}(obj=\'{}\',name=\'{}\')'.format(self.__class__.__name__.split('.')[-1], self.obj, self.name)
+        return "{}(obj='{}',name='{}')".format(
+            self.__class__.__name__.split(".")[-1], self.obj, self.name
+        )

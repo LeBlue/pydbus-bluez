@@ -1,4 +1,3 @@
-
 from time import sleep
 from functools import wraps, partial
 import logging
@@ -13,11 +12,10 @@ from gi.repository.GLib import Error as GLibError
 from xml.etree import ElementTree as ET
 
 
-
 class Adapter(BluezInterfaceObject):
 
-    iface = 'org.bluez.{}1'.format(__qualname__)
-    intro_xml = '''<?xml version="1.0" ?>
+    iface = "org.bluez.{}1".format(__qualname__)
+    intro_xml = """<?xml version="1.0" ?>
         <!DOCTYPE node
         PUBLIC '-//freedesktop//DTD D-BUS Object Introspection 1.0//EN'
         'http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd'>
@@ -129,16 +127,15 @@ class Adapter(BluezInterfaceObject):
             </method>
         </interface>
     </node>
-    '''
+    """
     introspection = ET.fromstring(intro_xml)
-
 
     @staticmethod
     def list():
         l = []
         for c in BluezObjectManager.get_childs(only_direct=True):
             try:
-                name = c.split('/')[-1]
+                name = c.split("/")[-1]
                 l.append(Adapter(name))
             except:
                 pass
@@ -146,40 +143,44 @@ class Adapter(BluezInterfaceObject):
 
     @classmethod
     def from_obj(cls, obj):
-        return cls(obj.split('/')[-1])
+        return cls(obj.split("/")[-1])
 
     @bz.convertBluezError
     def __init__(self, name):
         try:
-            super().__init__('/org/bluez/{}'.format(name), name)
+            super().__init__("/org/bluez/{}".format(name), name)
 
         except (bz.BluezDoesNotExistError, bz.DBusUnknownObjectError):
             raise bz.BluezDoesNotExistError(
-                'Adapter not found \'{}\''.format(name)) from None
+                "Adapter not found '{}'".format(name)
+            ) from None
 
         try:
-            if not bz.getBluezPropOrRaise(self._proxy, 'Powered'):
+            if not bz.getBluezPropOrRaise(self._proxy, "Powered"):
                 self._proxy.Powered = True
 
         except (bz.BluezDoesNotExistError, bz.DBusUnknownObjectError):
             raise bz.BluezDoesNotExistError(
-                'Adapter not found \'{}\''.format(name)) from None
+                "Adapter not found '{}'".format(name)
+            ) from None
 
     @bz.convertBluezError
     def scan(self, enable=True, filters=None):
-        '''
-            enable:  enable/disable scanning
-            filters: dict with scan filters, see bluez 'SetDiscoveryFilter' API:
-                        'UUIDs': list with UUID strings
-                        'Transport': string 'le', 'bredr' or 'auto'
-        '''
+        """
+        enable:  enable/disable scanning
+        filters: dict with scan filters, see bluez 'SetDiscoveryFilter' API:
+                    'UUIDs': list with UUID strings
+                    'Transport': string 'le', 'bredr' or 'auto'
+        """
         if enable:
             if filters and isinstance(filters, dict):
                 # convert to Variants (for supported)
-                if 'UUIDs' in filters and not isinstance(filters['UUIDs'], Variant):
-                    filters['UUIDs'] = Variant('as', filters['UUIDs'])
-                if 'Transport' in filters and not isinstance(filters['Transport'], Variant):
-                    filters['Transport'] = Variant('s', filters['Transport'])
+                if "UUIDs" in filters and not isinstance(filters["UUIDs"], Variant):
+                    filters["UUIDs"] = Variant("as", filters["UUIDs"])
+                if "Transport" in filters and not isinstance(
+                    filters["Transport"], Variant
+                ):
+                    filters["Transport"] = Variant("s", filters["Transport"])
 
                 bz.callBluezFunction(self._proxy.SetDiscoveryFilter, filters)
             try:
@@ -192,19 +193,17 @@ class Adapter(BluezInterfaceObject):
             except bz.BluezFailedError:
                 pass
 
-        return bz.getBluezPropOrNone(self._proxy, 'Discovering', fail_ret=False)
-
+        return bz.getBluezPropOrNone(self._proxy, "Discovering", fail_ret=False)
 
     @property
     def scanning(self):
-        return bz.getBluezPropOrNone(self._proxy, 'Discovering', fail_ret=False)
-
+        return bz.getBluezPropOrNone(self._proxy, "Discovering", fail_ret=False)
 
     @bz.convertBluezError
     def devices(self):
-        '''
-            returns list with all scanned/connected/paired devices
-        '''
+        """
+        returns list with all scanned/connected/paired devices
+        """
         l = []
         for obj in BluezObjectManager.get_childs(self.obj, only_direct=True):
             try:
@@ -214,29 +213,44 @@ class Adapter(BluezInterfaceObject):
         return l
 
     def onDeviceAdded(self, func, *args, init=False, **kwargs):
-        '''
-            Registers callback for new device added/discovered
+        """
+        Registers callback for new device added/discovered
 
-            func: callback function(device: Device, properties: dict, *args, **kwargs)
-            init: set to True, to call func on all already existing devices
-        '''
+        func: callback function(device: Device, properties: dict, *args, **kwargs)
+        init: set to True, to call func on all already existing devices
+        """
         om = BluezObjectManager.get()
         if func:
+
             def device_added(self_adapter, added_obj, added_if, *cbargs, **cbkwargs):
                 if Device.iface in added_if:
                     addr = None
                     properties = added_if[Device.iface]
-                    if 'Address' in added_if[Device.iface]:
-                        addr = added_if[Device.iface]['Address']
+                    if "Address" in added_if[Device.iface]:
+                        addr = added_if[Device.iface]["Address"]
                     device = Device(self_adapter, addr=addr, obj=added_obj)
-                    if 'filter_interfaces' in cbkwargs:
-                        del cbkwargs['filter_interfaces']
+                    if "filter_interfaces" in cbkwargs:
+                        del cbkwargs["filter_interfaces"]
 
-                    self.logger.debug('call device_added: func: %s(%s,%s,%s)', str(func), str(device), str(cbargs), str(cbkwargs))
+                    self.logger.debug(
+                        "call device_added: func: %s(%s,%s,%s)",
+                        str(func),
+                        str(device),
+                        str(cbargs),
+                        str(cbkwargs),
+                    )
                     func(device, properties, *cbargs, **cbkwargs)
 
-            self.logger.debug('add device_added: func: %s(%s,%s,%s)', str(device_added), str(self), str(args), str(kwargs))
-            om.onObjectAdded(self, device_added, *args, filter_interfaces=Device.iface, **kwargs)
+            self.logger.debug(
+                "add device_added: func: %s(%s,%s,%s)",
+                str(device_added),
+                str(self),
+                str(args),
+                str(kwargs),
+            )
+            om.onObjectAdded(
+                self, device_added, *args, filter_interfaces=Device.iface, **kwargs
+            )
             if init:
                 dev_objs = om.childs(self, only_direct=True)
                 for dobj in dev_objs:
@@ -251,27 +265,45 @@ class Adapter(BluezInterfaceObject):
             om.onObjectAdded(self, None)
 
     def onDeviceRemoved(self, device, func, *args, **kwargs):
-        '''
-            Registers callback for device removed (either removed explicitly or scanning cache timeout)
+        """
+        Registers callback for device removed (either removed explicitly or scanning cache timeout)
 
-            func: callback function(adapter: Bluez.Adapter, device Bluez.Device, *args, **kwargs)
-        '''
+        func: callback function(adapter: Bluez.Adapter, device Bluez.Device, *args, **kwargs)
+        """
         om = BluezObjectManager.get()
         if func:
+
             def device_removed_cb(removed_device, removed_if, *cbargs, **cbkwargs):
                 if Device.iface in removed_if:
-                    if 'filter_interfaces' in cbkwargs:
-                        del cbkwargs['filter_interfaces']
+                    if "filter_interfaces" in cbkwargs:
+                        del cbkwargs["filter_interfaces"]
 
-                    self.logger.debug('call device_removed_cb: func: %s(%s,%s,%s)', str(func), str(removed_device), str(cbargs), str(cbkwargs))
+                    self.logger.debug(
+                        "call device_removed_cb: func: %s(%s,%s,%s)",
+                        str(func),
+                        str(removed_device),
+                        str(cbargs),
+                        str(cbkwargs),
+                    )
 
                     func(self, device, *cbargs, **cbkwargs)
 
-            self.logger.debug('add device_removed_cb: func: %s(%s,%s,%s)', str(device_removed_cb), str(device), str(args), str(kwargs))
-            om.onObjectRemoved(device, device_removed_cb, *args, filter_interfaces=Device.iface, **kwargs)
+            self.logger.debug(
+                "add device_removed_cb: func: %s(%s,%s,%s)",
+                str(device_removed_cb),
+                str(device),
+                str(args),
+                str(kwargs),
+            )
+            om.onObjectRemoved(
+                device,
+                device_removed_cb,
+                *args,
+                filter_interfaces=Device.iface,
+                **kwargs,
+            )
         else:
             om.onObjectRemoved(device, None, filter_interface=None)
-
 
     @bz.convertBluezError
     def paired_devices(self):
@@ -286,18 +318,21 @@ class Adapter(BluezInterfaceObject):
 
         return paired_devs
 
-
     @bz.convertBluezError
     def remove_device(self, dev_obj):
-        '''
-            remove device: disconnect, remove pairing keys, delete gatt db cache (in bluez)
-        '''
+        """
+        remove device: disconnect, remove pairing keys, delete gatt db cache (in bluez)
+        """
         if not dev_obj:
-            raise ValueError('dev_obj argument is not valid')
-        if len(dev_obj) == 17 and len(dev_obj.split(':')) == 6:
-            dev_obj = "{}/dev_{}".format(self.obj, dev_obj.upper().replace(':', '_'))
-        elif not (len(dev_obj) == 37 and dev_obj.startswith('/org/bluez/hci') and len(dev_obj.split('/')) == 5):
-            raise ValueError('dev_obj argument is not valid: {}'.format(dev_obj))
+            raise ValueError("dev_obj argument is not valid")
+        if len(dev_obj) == 17 and len(dev_obj.split(":")) == 6:
+            dev_obj = "{}/dev_{}".format(self.obj, dev_obj.upper().replace(":", "_"))
+        elif not (
+            len(dev_obj) == 37
+            and dev_obj.startswith("/org/bluez/hci")
+            and len(dev_obj.split("/")) == 5
+        ):
+            raise ValueError("dev_obj argument is not valid: {}".format(dev_obj))
 
         try:
             bz.callBluezFunction(self._proxy.RemoveDevice, dev_obj)
@@ -305,17 +340,17 @@ class Adapter(BluezInterfaceObject):
             pass
 
     def clear(self):
-        '''
-            remove all signal subscriptions and delete proxy
-        '''
+        """
+        remove all signal subscriptions and delete proxy
+        """
         BluezObjectManager.get().onObjectAdded(self, None)
         self.obj = None
 
 
 class Device(BluezInterfaceObject):
 
-    iface = 'org.bluez.{}1'.format(__qualname__)
-    intro_xml = '''<?xml version="1.0" ?>
+    iface = "org.bluez.{}1".format(__qualname__)
+    intro_xml = """<?xml version="1.0" ?>
         <!DOCTYPE node
         PUBLIC '-//freedesktop//DTD D-BUS Object Introspection 1.0//EN'
         'http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd'>
@@ -379,25 +414,30 @@ class Device(BluezInterfaceObject):
             <arg name="invalidated_properties" type="as"/>
             </signal>
         </interface>
-        </node>'''
+        </node>"""
     introspection = ET.fromstring(intro_xml)
-
 
     @bz.convertBluezError
     def __init__(self, adapter=None, addr=None, obj=None):
 
-        if not obj and (not adapter and  not addr):
-            raise ValueError('Either \'obj\' or \'adapter\' and \'addr\' must be given')
+        if not obj and (not adapter and not addr):
+            raise ValueError("Either 'obj' or 'adapter' and 'addr' must be given")
 
         if adapter and addr:
             if isinstance(adapter, str):
-                tmp_obj = '/org/bluez/{}/dev_{}'.format(adapter, addr.upper().replace(':', '_'))
+                tmp_obj = "/org/bluez/{}/dev_{}".format(
+                    adapter, addr.upper().replace(":", "_")
+                )
                 adapter = Adapter(adapter)
             else:
-                tmp_obj = '{}/dev_{}'.format(adapter.obj, addr.upper().replace(':', '_'))
+                tmp_obj = "{}/dev_{}".format(
+                    adapter.obj, addr.upper().replace(":", "_")
+                )
 
             if obj and tmp_obj != obj:
-                raise ValueError('\'obj\' and \'adapter\' and \'addr\' given, but do not match')
+                raise ValueError(
+                    "'obj' and 'adapter' and 'addr' given, but do not match"
+                )
             obj = tmp_obj
 
         super().__init__(obj, addr)
@@ -405,17 +445,16 @@ class Device(BluezInterfaceObject):
             if addr:
                 self.name = addr
             else:
-                self.name = self._getBluezPropOrNone('Address')
+                self.name = self._getBluezPropOrNone("Address")
                 if not self.name:
                     try:
-                        self.name = obj.split('/')[4][4:].replace('_', ':')
+                        self.name = obj.split("/")[4][4:].replace("_", ":")
                     except Exception:
                         pass
 
         if not adapter and obj:
-            adapter = Adapter(obj.split('/')[3])
+            adapter = Adapter(obj.split("/")[3])
         self.adapter = adapter
-
 
     @bz.convertBluezError
     def pair(self):
@@ -423,40 +462,42 @@ class Device(BluezInterfaceObject):
             return bz.callBluezFunction(self._proxy.Pair)
 
         except bz.BluezAlreadyExistsError:
-            self.logger.warning('Already paired: %s', str(self))
+            self.logger.warning("Already paired: %s", str(self))
             return self.paired
 
         return False
 
-
     @property
     def paired(self):
-        return self._getBluezPropOrNone('Paired', fail_ret=False)
+        return self._getBluezPropOrNone("Paired", fail_ret=False)
 
     @property
     def connected(self):
-        return self._getBluezPropOrNone('Connected', fail_ret=False)
+        return self._getBluezPropOrNone("Connected", fail_ret=False)
 
     @bz.convertBluezError
     def connect_async(self, done_cb, err_cb, data, timeout=30):
         if done_cb:
+
             def _done_cb(obj, res, user_data):
                 done_cb(self, res, user_data)
+
         else:
             _done_cb = None
 
         if err_cb:
+
             def _err_cb(obj, res, user_data):
                 try:
                     bz.getDBusError(res)
                 except Exception as e:
                     res = e
                 err_cb(self, res, user_data)
+
         else:
             _err_cb = None
 
         self._proxy.ConnectAsync(_done_cb, _err_cb, data, timeout=timeout)
-
 
     @bz.convertBluezError
     def connect(self):
@@ -465,7 +506,6 @@ class Device(BluezInterfaceObject):
         except Exception as e:
             self.logger.error(str(e))
             pass
-
 
     @bz.convertBluezError
     def disconnect(self):
@@ -478,18 +518,15 @@ class Device(BluezInterfaceObject):
 
         return False
 
-
     @bz.convertBluezError
     def remove(self):
         if self.obj:
-            ad_name = self.obj.split('/')[3]
+            ad_name = self.obj.split("/")[3]
             try:
                 ad = Adapter(ad_name)
                 ad.remove_device(self.obj)
             except bz.BluezError:
                 pass
-
-
 
     # @bz.convertBluezError
     # def address(self):
@@ -499,43 +536,39 @@ class Device(BluezInterfaceObject):
     def address(self):
         return self.name
 
-
     @property
     def rssi(self):
-        return self._getBluezPropOrNone('RSSI')
+        return self._getBluezPropOrNone("RSSI")
 
     @property
     def MTU(self):
-        return self._getBluezPropOrNone('MTU', fail_ret=0)
+        return self._getBluezPropOrNone("MTU", fail_ret=0)
 
     @property
     def services_resolved(self):
-        return self._getBluezPropOrNone('ServicesResolved', fail_ret=False)
-
+        return self._getBluezPropOrNone("ServicesResolved", fail_ret=False)
 
     @bz.convertBluezError
     def wait_services_resolved(self, wait_resolved_sec):
         waitfor = 0
 
-        self.logger.debug('resolved: %s',self._proxy.ServicesResolved)
+        self.logger.debug("resolved: %s", self._proxy.ServicesResolved)
         while not self.services_resolved and waitfor < wait_resolved_sec:
             if not self.connected:
-                raise bz.BluezNotConnectedError('Not connected')
-            #waitfor -= 1
+                raise bz.BluezNotConnectedError("Not connected")
+            # waitfor -= 1
             waitfor += 1
             sleep(1)
-        self.logger.info('Waited %s for resolving gatt DB uuids', waitfor)
+        self.logger.info("Waited %s for resolving gatt DB uuids", waitfor)
         return self.services_resolved
-
 
     @property
     def device_name(self):
-        return self._getBluezPropOrNone('Name')
+        return self._getBluezPropOrNone("Name")
 
     @property
     def trusted(self):
-        return self._getBluezPropOrNone('Trusted', fail_ret=False)
-
+        return self._getBluezPropOrNone("Trusted", fail_ret=False)
 
     @bz.convertBluezError
     def trust(self, on=True):
@@ -544,6 +577,7 @@ class Device(BluezInterfaceObject):
 
     @property
     def UUIDs(self):
-        return self._getBluezPropOrNone('UUIDs', fail_ret=[])
+        return self._getBluezPropOrNone("UUIDs", fail_ret=[])
 
-__all__ = ('Device', 'Adapter')
+
+__all__ = ("Device", "Adapter")

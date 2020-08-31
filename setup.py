@@ -7,54 +7,54 @@ import re
 
 here = path.abspath(path.dirname(__file__))
 
-pkgname = 'pydbusbluez'
-src_dir = 'src'
+pkgname = "pydbusbluez"
+src_dir = "src"
+
 
 def find_version(*file_paths):
-    with open(path.join(here, *file_paths), encoding='utf-8') as f:
+    with open(path.join(here, *file_paths), encoding="utf-8") as f:
         version_file = f.read()
-    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]",
-                              version_file, re.M)
+    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", version_file, re.M)
     if version_match:
         return version_match.group(1)
-    raise RuntimeError('Unable to find version string.')
+    raise RuntimeError("Unable to find version string.")
+
 
 def long_description(*file_paths):
-    with open(path.join(here, *file_paths), encoding='utf-8') as f:
+    with open(path.join(here, *file_paths), encoding="utf-8") as f:
         return f.read()
 
 
 setup(
-   name=pkgname,
-   version=find_version(src_dir, pkgname, '__init__.py'),
-   description='Utils for testing and configuration of ble devices via bluez dbus API',
-   author='Matthias Wauer',
-   author_email='matthiaswauer@gmail.com',
-   packages=find_packages(where=src_dir),
-   package_dir={
-      '': src_dir,
-   },
-   url='https://github.com/LeBlue/pydbus-bluez',
-
-   install_requires=[
-      'pydbus;platform_system=="Linux"'
-   ], #external packages as dependencies
-   include_package_data=True,
-   license='MIT',
-   python_requires='~=3.7',
-   classifiers=[
-      'Development Status :: 4 - Beta',
-      'Environment :: Console',
-      'Intended Audience :: Developers',
-      'License :: OSI Approved :: MIT License',
-      'Operating System :: Linux',
-      'Programming Language :: Python :: 3.7',
-      'Topic :: Software Development :: Testing',
-   ],
-   entry_points={
-      'console_scripts': [
-         'pydbusbluez_dev_info = {}.examples.device_info:main'.format(pkgname),
-         'pydbusbluez_shell = {}.examples.bt_shell:main'.format(pkgname),
-     ]
-   }
+    name=pkgname,
+    version=find_version(src_dir, pkgname, "__init__.py"),
+    description="Utils for testing and configuration of ble devices via bluez dbus API",
+    author="Matthias Wauer",
+    author_email="matthiaswauer@gmail.com",
+    packages=find_packages(where=src_dir),
+    package_dir={
+        "": src_dir,
+    },
+    url="https://github.com/LeBlue/pydbus-bluez",
+    install_requires=[
+        'pydbus;platform_system=="Linux"'
+    ],  # external packages as dependencies
+    include_package_data=True,
+    license="MIT",
+    python_requires="~=3.7",
+    classifiers=[
+        "Development Status :: 4 - Beta",
+        "Environment :: Console",
+        "Intended Audience :: Developers",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: Linux",
+        "Programming Language :: Python :: 3.7",
+        "Topic :: Software Development :: Testing",
+    ],
+    entry_points={
+        "console_scripts": [
+            "pydbusbluez_dev_info = {}.examples.device_info:main".format(pkgname),
+            "pydbusbluez_shell = {}.examples.bt_shell:main".format(pkgname),
+        ]
+    },
 )

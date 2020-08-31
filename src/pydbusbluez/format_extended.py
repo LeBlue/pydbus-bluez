@@ -16,15 +16,12 @@ class FormatBatteryLevelState(fmt.FormatTuple):
     sub_cls = [fmt.FormatUint8, FormatBatteryPowerState]
 
 
-
 class FormatCCC(fmt.FormatTuple):
     sub_cls = (fmt.FormatUint8, fmt.FormatUint8)
 
-CCC = {
-    'name': 'CCC',
-    'uuid': '2902',
-    'fmt': FormatCCC
-}
+
+CCC = {"name": "CCC", "uuid": "2902", "fmt": FormatCCC}
+
 
 class FormatAutoCRF(fmt.FormatBase):
 
@@ -35,7 +32,7 @@ class FormatAutoCRF(fmt.FormatBase):
         4: fmt.FormatUint8,
         12: fmt.FormatSint8,
         14: fmt.FormatSint16,
-        25: fmt.FormatUtf8s
+        25: fmt.FormatUtf8s,
     }
 
     @classmethod
@@ -51,10 +48,11 @@ class FormatAutoCRF(fmt.FormatBase):
         elif fmt not in cls._keys:
             raise ValueError('unsupported "format" value: {} in CRF'.format(fmt))
 
-
-        cls_name = 'FormatCRF{}'.format(char_name_id)
-        fmt_cls = new_class(cls_name, (cls._keys[fmt], ))
+        cls_name = "FormatCRF{}".format(char_name_id)
+        fmt_cls = new_class(cls_name, (cls._keys[fmt],))
         fmt_cls.exponent = exp
-        fmt_cls.__doc__ = 'unit: {} ns: {}, description: {}'.format(unit, ns, description)
+        fmt_cls.__doc__ = "unit: {} ns: {}, description: {}".format(
+            unit, ns, description
+        )
         # fmt_cls.__metaclass__ = MetaFormatInt
         return fmt_cls
