@@ -719,7 +719,7 @@ class BTShell(cmd.Cmd):
         if not args:
             print("Need number of seconds as argument", file=sys.stderr)
         try:
-            s = int(args[0])
+            s = float(args[0])
         except Exception as e:
             print(str(e))
             return
