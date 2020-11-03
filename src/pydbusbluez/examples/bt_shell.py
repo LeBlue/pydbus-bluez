@@ -370,6 +370,55 @@ class BTShell(cmd.Cmd):
 
         return None
 
+    def do_assert(self, arg):
+        "get (fetch) a characteristic value and for returned value, exit shell if it does not match"
+        # print(arg)
+        args = _parse_args_simple(arg)
+
+        if len(args) < 2:
+            print(
+                'assert: Need an argument, simple python types, e.g 1, "foo", (1, 5), [0,4,5]',
+                file=sys.stderr,
+            )
+
+        g_char = args[0]
+
+        o = self.find_char_or_desc_obj(g_char)
+        if not o:
+            print(
+                "assert:",
+                g_char,
+                "Not valid in GATT database or not resolved",
+                file=sys.stderr,
+            )
+            sys.exit(2)
+
+        try:
+            v = o.read()
+        except bluez.BluezError as e:
+            print("assert: ", g_char, str(e), file=sys.stderr)
+            print(_make_id(o.name), v, file=sys.stderr)
+            sys.exit(1)
+
+        try:
+            exp_arg = " ".join(args[1:])
+            # print('arg is: \'{}\''.format(exp_arg))
+            exp_v = ast.literal_eval(exp_arg)
+            exp_o = o.fmt(exp_v)
+        except (ValueError, SyntaxError) as e:
+            print("assert: ", arg, str(e), file=sys.stderr)
+            sys.exit(2)
+
+        if exp_o != v:
+            print(f"assert: {g_char} exp: {str(exp_o)} != {str(v)}", file=sys.stderr)
+            sys.exit(3)
+
+        print(f"{g_char}: {str(v)}", file=sys.stderr)
+
+        return None
+
+    complete_assert = complete_set
+
     def do_get(self, arg):
         "get (fetch) a characteristic value or all values"
         # print(arg)
