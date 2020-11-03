@@ -356,6 +356,23 @@ class FormatTuple(FormatBase):
     def __str__(self):
         return "(" + ",".join([str(v) for v in self.value]) + ")"
 
+    def __eq__(self, other):
+        if isinstance(other, FormatTuple):
+            if len(other) != len(self):
+                return False
+            for idx, value in enumerate(self.values()):
+                if value != other[idx]:
+                    return False
+
+            return True
+        elif not isinstance(other, FormatBase):
+            for idx, value in enumerate(self.values()):
+                if value != other[idx]:
+                    return False
+
+            return True
+        return False
+
 
 __all__ = (
     "FormatBase",
