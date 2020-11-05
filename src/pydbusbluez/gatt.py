@@ -471,7 +471,7 @@ class GattCharacteristic(BluezInterfaceObject):
         super().__init__(None, name)
 
     @bzerror.convertBluezError
-    def read(self, options={}, raw=False, native=True):
+    def read(self, options=None, raw=False, native=True):
 
         if options and "timeout" in options:
             to = options["timeout"]
@@ -581,7 +581,9 @@ class GattCharacteristic(BluezInterfaceObject):
         return self._getBluezPropOrNone("Flags", fail_ret=[])
 
     @bzerror.convertBluezError
-    def write(self, value, options={}):
+    def write(self, value, options=None):
+        if options is None:
+            options = {}
 
         if self._proxy:
             if isinstance(value, bytes):
