@@ -251,31 +251,31 @@ def getDBusError(err):
     if ml[1].endswith(".Failed"):
         raise BluezFailedError(msg)
     if ml[1].endswith(".NotReady"):
-        raise (BluezNotReadyError(msg))
+        raise BluezNotReadyError(msg)
     if ml[1].endswith(".AlreadyConnected"):
-        raise (BluezAlreadyConnectedError(msg))
+        raise BluezAlreadyConnectedError(msg)
     if ml[1].endswith(".InvalidArguments"):
-        raise (BluezInvalidArgumentsError(msg))
+        raise BluezInvalidArgumentsError(msg)
     if ml[1].endswith(".NotAvailable"):
-        raise (BluezNotAvailableError(msg))
+        raise BluezNotAvailableError(msg)
     if ml[1].endswith(".NotSupported"):
-        raise (BluezNotSupportedError(msg))
+        raise BluezNotSupportedError(msg)
     if ml[1].endswith(".AuthenticationCanceled"):
-        raise (BluezAuthenticationCanceledError(msg))
+        raise BluezAuthenticationCanceledError(msg)
     if ml[1].endswith(".AuthenticationFailed"):
-        raise (BluezAuthenticationFailedError(msg))
+        raise BluezAuthenticationFailedError(msg)
     if ml[1].endswith(".AuthenticationRejected"):
-        raise (BluezAuthenticationRejectedError(msg))
+        raise BluezAuthenticationRejectedError(msg)
     if ml[1].endswith(".AuthenticationTimeout"):
-        raise (BluezAuthenticationTimeoutError(msg))
+        raise BluezAuthenticationTimeoutError(msg)
     if ml[1].endswith(".ConnectionAttemptFailed"):
-        raise (BluezConnectionAttemptFailedError(msg))
+        raise BluezConnectionAttemptFailedError(msg)
     if ml[1].endswith(".DoesNotExist"):
-        raise (BluezDoesNotExistError(msg))
+        raise BluezDoesNotExistError(msg)
     if ml[1].endswith(".NotConnected"):
-        raise (BluezNotConnectedError(msg))
+        raise BluezNotConnectedError(msg)
     if ml[1].endswith(".NotPermitted"):
-        raise (BluezNotPermittedError(msg))
+        raise BluezNotPermittedError(msg)
 
     raise BluezError(msg)
 
