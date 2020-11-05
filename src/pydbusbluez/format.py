@@ -224,7 +224,7 @@ class FormatUtf8s(FormatBase):
 
 class FormatBitfield(FormatUint8):
     len = 1
-    native_types = (int, )
+    native_types = (int,)
 
     def __str__(self):
         return "0b{:08b}".format(self.value)
@@ -248,8 +248,9 @@ class FormatTuple(FormatBase):
         try:
             if len(self.sub_cls) != len(value):
                 raise ValueError(
-                    "Expected {} number of values for format: {} ({}}".format(
-                        len(self.sub_cls), self.__class__.__name__, self._sub_str()
+                    (
+                        f"Expected {len(self.sub_cls)} number of values for format:"
+                        "{self.__class__.__name__} ({self._sub_str()}}"
                     )
                 )
         except TypeError:
@@ -292,25 +293,33 @@ class FormatTuple(FormatBase):
             if not self._is_named():
                 raise TypeError("index must be int")
             try:
-                i = self.sub_cls_names.index(key)
+                idx = self.sub_cls_names.index(key)
             except ValueError:
                 raise KeyError(key)
-            return self.value[i]
+            return self.value[idx]
         raise TypeError("index must be str or int")
 
     def __setitem__(self, key, sub_value):
         if isinstance(key, int):
-            self.value[key] = sub_value
+            try:
+                # create sub class instance for type checking (raises Type/Value)
+                # resulting value should be original sub_value on success
+                self.value[key] = self.sub_cls[key](sub_value).value
+            except IndexError:
+                raise IndexError(
+                    f"{self.__class__.__name__} assignment index out of range"
+                )
         elif isinstance(key, str):
             if not self._is_named():
                 raise TypeError("index must be int")
             try:
-                i = scn.index(key)
+                idx = self.sub_cls_names.index(key)
             except ValueError:
                 raise KeyError(key)
-            self.value[i] = sub_value
 
-        raise TypeError("index must be str or int")
+            self.value[idx] = self.sub_cls[idx](sub_value).value
+        else:
+            raise TypeError("index must be str or int")
 
     def keys(self):
         if not self._is_named():
