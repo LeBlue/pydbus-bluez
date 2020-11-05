@@ -506,7 +506,12 @@ class GattCharacteristic(BluezInterfaceObject):
                     )
                 return v_dec
 
-        return None
+        elif self.service.device and self.service.device.services_resolved:
+            raise bzerror.BluezDoesNotExistError(f"{self.name} not found")
+
+        raise bzerror.BluezFailedError(
+            f"Failed to read {self.name}, database not resolved"
+        )
 
     @bzerror.convertBluezError
     def read_async(
@@ -557,8 +562,12 @@ class GattCharacteristic(BluezInterfaceObject):
             #     # error_cb(self, e, user_data)
             #     raise
 
-        else:
-            raise bzerror.BluezDoesNotExistError("Not found: " + self.name)
+        elif self.service.device and self.service.device.services_resolved:
+            raise bzerror.BluezDoesNotExistError(f"{self.name} not found")
+
+        raise bzerror.BluezFailedError(
+            f"Failed to read {self.name}, database not resolved"
+        )
 
     @property
     def value(self):
@@ -611,6 +620,14 @@ class GattCharacteristic(BluezInterfaceObject):
             )
 
             self._proxy.WriteValue(v_enc, options)
+
+        elif self.service.device and self.service.device.services_resolved:
+            raise bzerror.BluezDoesNotExistError(f"{self.name} not found")
+
+        else:
+            raise bzerror.BluezFailedError(
+                f"Failed to write {self.name}, database not resolved"
+            )
 
     @bzerror.convertBluezError
     def onValueChanged(self, func, *args, **kwargs):
