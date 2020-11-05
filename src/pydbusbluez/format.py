@@ -41,13 +41,9 @@ class FormatBase(object, metaclass=MetaBluezFormat):
         self.value = value
         try:
             _ = self.encode()
-        except Exception:
+        except Exception as ex:
             # keep exception raised by 'encode', but add this one
-            raise TypeError(
-                "{}, wrong type: {}, expected: {}".format(
-                    self.__class__.__name__, type(value), self.native_types
-                )
-            )
+            raise ValueError(f"{self.__class__.__name__}: {str(ex)}")
 
     @classmethod
     def decode(cls, value):
@@ -228,6 +224,7 @@ class FormatUtf8s(FormatBase):
 
 class FormatBitfield(FormatUint8):
     len = 1
+    native_types = (int, )
 
     def __str__(self):
         return "0b{:08b}".format(self.value)
@@ -243,7 +240,9 @@ class FormatBitfield16(FormatUint16):
 class FormatTuple(FormatBase):
 
     sub_cls = []
-    native_types = (tuple, list)
+    sub_cls_names = []
+
+    native_types = (list, tuple)
     # here we have a list/tuple as value
     def __init__(self, value):
         try:
@@ -277,7 +276,7 @@ class FormatTuple(FormatBase):
             _ = self.sub_cls_names
         except AttributeError:
             return False
-        return True
+        return bool(self.sub_cls_names)
 
     # del not suported, wonder if wee need it
     #    def __delitem__(self, key):
@@ -340,7 +339,7 @@ class FormatTuple(FormatBase):
             value = value[len_get:]
             dec_vals.append(sub.decode(v))
 
-        return cls(list(dec_vals))
+        return cls(cls.native_types[0](dec_vals))
 
     def encode(self):
         enc_vals = b""
