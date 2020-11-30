@@ -58,32 +58,6 @@ class CmdTimeout(object):
         return not self.canceled
 
 
-def bt_connect(GATT, adapter, addr, timeout):
-    d = None
-    try:
-        adapter_obj = bluez.Adapter(adapter)
-        devs = adapter_obj.devices()
-        for d in devs:
-            if d.name == addr.upper():
-                break
-        if not d:
-            adapter_obj.scan()
-            time.sleep(timeout)
-
-        devs = adapter_obj.devices()
-        for d in devs:
-            if d.name == addr.upper():
-                break
-
-        if d:
-            d.connect()
-        if d.connected:
-            return bluez.Gatt(d, GATT)
-
-    except bluez.BluezError as e:
-        print("Failed:", str(e), file=sys.stderr)
-
-
 def main():
     parser = ArgumentParser(description="BT (my_peripheral) command interpreter")
     parser = ArgumentParser(
@@ -222,29 +196,39 @@ class BTShell(cmd.Cmd):
         self.make_prompt()
 
     def bt_connect(self):
-        d = None
+        dev_obj = None
         try:
             adapter_obj = bluez.Adapter(self.adapter)
             devs = adapter_obj.devices()
             for d in devs:
                 if d.name == self.device_addr.upper():
+                    dev_obj = d
                     break
-            if not d:
+            if not dev_obj:
                 adapter_obj.scan()
                 time.sleep(self.scan_duration)
+                adapter_obj.scan(enable=False)
 
             devs = adapter_obj.devices()
             for d in devs:
                 if d.name == self.device_addr.upper():
+                    dev_obj = d
                     break
 
-            if d:
-                d.connect()
-            if d.connected:
-                return bluez.Gatt(d, self.gatt_db_description)
+            if dev_obj:
+                dev_obj.connect()
+                if dev_obj.connected:
+                    return bluez.Gatt(dev_obj, self.gatt_db_description)
+
+                print("Failed:", str(e), file=sys.stderr)
+
+            else:
+                print("Failed to find device nearby", file=sys.stderr)
 
         except bluez.BluezError as e:
             print("Failed:", str(e), file=sys.stderr)
+
+        return None
 
     def load_scripts(self, scripts):
         try:
