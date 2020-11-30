@@ -220,7 +220,7 @@ class BTShell(cmd.Cmd):
                 if dev_obj.connected:
                     return bluez.Gatt(dev_obj, self.gatt_db_description)
 
-                print("Failed:", str(e), file=sys.stderr)
+                print("Failed:", file=sys.stderr)
 
             else:
                 print("Failed to find device nearby", file=sys.stderr)
@@ -381,7 +381,7 @@ class BTShell(cmd.Cmd):
             v = o.read()
         except bluez.BluezError as e:
             print("assert: ", g_char, str(e), file=sys.stderr)
-            print(_make_id(o.name), v, file=sys.stderr)
+            print(_make_id(o.name), file=sys.stderr)
             sys.exit(1)
 
         try:
@@ -734,6 +734,10 @@ class BTShell(cmd.Cmd):
                 print(str(e))
                 return
 
+        if not self.gatt:
+            print("Disconnected", file=sys.stderr)
+            return
+
         for s in self.gatt.services:
             for c in s.chars:
                 try:
@@ -746,6 +750,9 @@ class BTShell(cmd.Cmd):
 
                 except bluez.BluezDoesNotExistError as e:
                     print(c.name, str(e), file=sys.stderr)
+                except bluez.BluezError as e:
+                    print(str(e), file=sys.stderr)
+
 
         loop = MainLoop.new(None, False)
 
