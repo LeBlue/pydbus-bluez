@@ -113,7 +113,7 @@ class FormatUint48(FormatUint):
     len = 6
 
 
-_endian = "="
+_endian = "<"
 # works only as base for powers of 2 sints
 class FormatPacked(FormatBase):
 
