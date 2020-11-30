@@ -471,20 +471,18 @@ class GattCharacteristic(BluezInterfaceObject):
         super().__init__(None, name)
 
     @bzerror.convertBluezError
-    def read(self, options=None, raw=False, native=True):
+    def read(self, options=None, raw=False, native=True, offset=0, length=0, timeout=30):
+        if options is None:
+            options = {}
 
-        if options and "timeout" in options:
+        if "timeout" in options:
             to = options["timeout"]
             del options["timeout"]
         else:
-            to = 30
+            to = timeout
 
-        if (
-            options
-            and "offset" in options
-            and not isinstance(options["offset"], Variant)
-        ):
-            options["offset"] = Variant("q", options["offset"])
+        if (offset and "offset" not in options):
+            options["offset"] = Variant("q", offset)
 
         if self._proxy:
             try:
@@ -590,7 +588,7 @@ class GattCharacteristic(BluezInterfaceObject):
         return self._getBluezPropOrNone("Flags", fail_ret=[])
 
     @bzerror.convertBluezError
-    def write(self, value, options=None):
+    def write(self, value, options=None, offset=0, length=0):
         if options is None:
             options = {}
 
@@ -606,14 +604,23 @@ class GattCharacteristic(BluezInterfaceObject):
                     v_obj = self.fmt(value)
                     v_enc = v_obj.encode()
 
-                length = 0
+
             if "length" in options:
                 length = options["length"]
                 del options["length"]
+            if length:
                 if not isinstance(length, int):
                     raise TypeError("Length key in 'options' must be 'int'")
                 if len(v_enc) > length:
                     v_enc = v_enc[:length]
+                else:
+                    raise ValueError("Length must be < encoded length")
+            if offset > 0:
+                if len(v_enc) <= offset:
+                    raise ValueError("Offset is bigger than encoded length")
+
+                v_enc = v_enc[offset:]
+                options["offset"] = Variant("q", offset)
 
             self.logger.debug(
                 "Write: {} {} {}".format(v_enc, str(v_obj), self.fmt.__name__)
